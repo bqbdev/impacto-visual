@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerador de Orçamento | Impacto Visual</title>
+  <meta name="description" content="Página interna para geração de orçamento da Impacto Visual Comunicação Visual.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="budget-page">
+  <header class="site-header">
+    <nav class="navbar container" aria-label="Menu principal">
+      <a class="brand" href="index.html" aria-label="Impacto Visual Comunicação Visual">
+        <img src="logo.png" alt="Logo Impacto Visual Comunicação Visual">
+        <span>Impacto Visual</span>
+      </a>
+
+      <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <div class="nav-links" data-menu>
+        <a href="index.html#servicos">Serviços</a>
+        <a href="index.html#contato">Contato</a>
+        <a class="nav-cta" href="index.html">Voltar ao site</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="budget-main">
+    <section class="budget-hero section-reveal">
+      <div class="container budget-title">
+        <img src="logo.png" alt="Logo Impacto Visual Comunicação Visual">
+        <div>
+          <p class="eyebrow">Área interna</p>
+          <h1>Gerador de orçamento</h1>
+          <p>Calcule internamente, gere a prévia do cliente e prepare a mensagem para WhatsApp sem exibir custos internos.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="budget-workspace container section-reveal">
+      <form class="budget-form" id="budgetForm">
+        <div class="form-card">
+          <div class="form-section-title">
+            <span>1</span>
+            <h2>Dados do cliente</h2>
+          </div>
+          <div class="form-grid">
+            <label>
+              Nome do cliente
+              <input type="text" id="clienteNome" placeholder="Ex.: João Silva" required>
+            </label>
+            <label>
+              WhatsApp
+              <input type="tel" id="clienteWhatsapp" placeholder="(00) 00000-0000">
+            </label>
+            <label class="full">
+              Endereço
+              <input type="text" id="clienteEndereco" placeholder="Rua, número, bairro e cidade">
+            </label>
+            <label class="full">
+              Descrição do serviço
+              <textarea id="descricaoServico" rows="5" placeholder="Descreva o serviço contratado" required></textarea>
+            </label>
+            <label>
+              Prazo de execução em dias
+              <input type="number" id="prazoExecucao" min="1" placeholder="Ex.: 7" required>
+            </label>
+            <label class="full">
+              Observações
+              <textarea id="observacoes" rows="4" placeholder="Condições comerciais, detalhes e informações adicionais"></textarea>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-card internal-card">
+          <div class="form-section-title">
+            <span>2</span>
+            <h2>Cálculo interno</h2>
+          </div>
+          <div class="form-grid">
+            <label>
+              Nome do material
+              <input type="text" id="nomeMaterial" placeholder="Ex.: ACM">
+            </label>
+            <label>
+              Valor pago no material
+              <input type="number" id="valorMaterial" min="0" step="0.01" placeholder="3200" required>
+            </label>
+          </div>
+
+          <div class="internal-results" aria-live="polite">
+            <div>
+              <span>Acréscimo automático de 22%</span>
+              <strong id="acrescimoTexto">R$ 0,00</strong>
+            </div>
+            <div>
+              <span>Material com acréscimo</span>
+              <strong id="materialComAcrescimoTexto">R$ 0,00</strong>
+            </div>
+            <div>
+              <span>Mão de obra automática</span>
+              <strong id="maoDeObraTexto">R$ 0,00</strong>
+            </div>
+            <div class="highlight-result">
+              <span>Valor final para o cliente</span>
+              <strong id="valorFinalTexto">R$ 0,00</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-card">
+          <div class="form-section-title">
+            <span>3</span>
+            <h2>Pagamento</h2>
+          </div>
+          <div class="form-grid">
+            <label>
+              Valor de entrada
+              <input type="number" id="valorEntrada" min="0" step="0.01" placeholder="0">
+            </label>
+            <label>
+              Quantidade de parcelas no cartão
+              <input type="number" id="quantidadeParcelas" min="1" value="1">
+            </label>
+          </div>
+          <div class="payment-summary">
+            <div>
+              <span>Saldo restante</span>
+              <strong id="saldoRestanteTexto">R$ 0,00</strong>
+            </div>
+            <div>
+              <span>Valor da parcela</span>
+              <strong id="valorParcelaTexto">R$ 0,00</strong>
+            </div>
+            <div>
+              <span>Validade automática</span>
+              <strong id="validadeTexto">30 dias</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-bar">
+          <button class="btn btn-primary" type="button" id="calcularBtn">Calcular orçamento</button>
+          <button class="btn btn-secondary" type="button" id="gerarWhatsappBtn">Gerar texto para WhatsApp</button>
+          <button class="btn btn-secondary" type="button" id="copiarWhatsappBtn">Copiar texto para WhatsApp</button>
+          <button class="btn btn-secondary" type="button" id="imprimirBtn">Imprimir orçamento</button>
+          <button class="btn btn-ghost" type="button" id="limparBtn">Limpar formulário</button>
+        </div>
+      </form>
+
+      <aside class="budget-preview" aria-label="Prévia do orçamento">
+        <div class="preview-card" id="printArea">
+          <div class="preview-header">
+            <img src="logo.png" alt="Logo Impacto Visual Comunicação Visual">
+            <div>
+              <strong>Impacto Visual Comunicação Visual</strong>
+              <span>Orçamento comercial</span>
+            </div>
+          </div>
+
+          <div class="preview-body">
+            <div class="preview-row">
+              <span>Cliente</span>
+              <strong id="previewCliente">-</strong>
+            </div>
+            <div class="preview-row">
+              <span>WhatsApp</span>
+              <strong id="previewWhatsapp">-</strong>
+            </div>
+            <div class="preview-row">
+              <span>Endereço</span>
+              <strong id="previewEndereco">-</strong>
+            </div>
+            <div class="preview-block">
+              <span>Descrição do serviço</span>
+              <p id="previewDescricao">-</p>
+            </div>
+            <div class="preview-row">
+              <span>Prazo de execução</span>
+              <strong id="previewPrazo">-</strong>
+            </div>
+            <div class="preview-total">
+              <span>Valor total final</span>
+              <strong id="previewValorFinal">R$ 0,00</strong>
+            </div>
+            <div class="preview-row">
+              <span>Entrada</span>
+              <strong id="previewEntrada">R$ 0,00</strong>
+            </div>
+            <div class="preview-row">
+              <span>Saldo restante</span>
+              <strong id="previewSaldo">R$ 0,00</strong>
+            </div>
+            <div class="preview-row">
+              <span>Parcelamento</span>
+              <strong id="previewParcelamento">1x de R$ 0,00</strong>
+            </div>
+            <div class="preview-block">
+              <span>Observações comerciais</span>
+              <p id="previewObservacoes">-</p>
+            </div>
+            <div class="validity-box">
+              <strong>Validade do orçamento</strong>
+              <p>Este orçamento é válido por 30 dias a partir da data de emissão.</p>
+              <span id="previewDatas">-</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="whatsapp-box">
+          <label for="whatsappTexto">Texto para WhatsApp</label>
+          <textarea id="whatsappTexto" rows="12" readonly placeholder="Clique em gerar texto para WhatsApp"></textarea>
+          <p id="copyFeedback" role="status"></p>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
