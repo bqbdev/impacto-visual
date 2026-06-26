@@ -128,9 +128,21 @@ function setupQuotePage() {
 
   document.querySelector("[data-whatsapp]")?.addEventListener("click", () => {
     updateQuoteState();
+    toast("Texto WhatsApp gerado.");
+  });
+
+  document.querySelector("[data-whatsapp-client]")?.addEventListener("click", () => {
+    updateQuoteState();
+
+    const clientWhatsapp = normalizeWhatsappNumber(lastQuote.client.whatsapp || lastQuote.client.phone);
+
+    if (!clientWhatsapp) {
+      toast("Cadastre o WhatsApp do cliente antes de enviar.");
+      return;
+    }
 
     window.open(
-      `https://wa.me/5519994971866?text=${encodeURIComponent(whatsappOutput.value)}`,
+      `https://wa.me/${clientWhatsapp}?text=${encodeURIComponent(whatsappOutput.value)}`,
       "_blank",
       "noopener"
     );
@@ -197,41 +209,37 @@ function buildQuote(form) {
   const remainingBalance = Math.max(0, costs.finalValue - downPayment);
   const installmentValue = remainingBalance / installments;
 
-  return {
+  const quote = {
     client: {
       name: text(data.get("clientName")),
       phone: text(data.get("phone")),
       whatsapp: text(data.get("whatsapp")),
       address: text(data.get("address"))
     },
-
     service: {
       description: text(data.get("serviceDescription")),
       deadline: text(data.get("deadline")),
       notes: text(data.get("notes"))
     },
-
     materials,
-
     internalCosts: costs,
-
     payment: {
       downPayment,
       installments,
       remainingBalance,
       installmentValue
     },
-
     status: "em_andamento",
-
     dates: {
       issuedAt: issuedAt.toISOString(),
       validUntil: validUntil.toISOString()
     },
-
     whatsappText: "",
     observations: text(data.get("notes"))
   };
+
+  quote.whatsappText = buildWhatsappText(quote);
+  return quote;
 }
 
 function getMaterials() {
@@ -275,13 +283,8 @@ function renderSummary(quote) {
   const balanceInput = document.querySelector("[name='remainingBalance']");
   const installmentInput = document.querySelector("[name='installmentValue']");
 
-  if (balanceInput) {
-    balanceInput.value = money.format(quote.payment.remainingBalance);
-  }
-
-  if (installmentInput) {
-    installmentInput.value = money.format(quote.payment.installmentValue);
-  }
+  if (balanceInput) balanceInput.value = money.format(quote.payment.remainingBalance);
+  if (installmentInput) installmentInput.value = money.format(quote.payment.installmentValue);
 }
 
 function buildWhatsappText(quote) {
@@ -304,10 +307,7 @@ function buildWhatsappText(quote) {
     lines.push("", `Observações: ${quote.service.notes}`);
   }
 
-  const textValue = lines.join("\n");
-  quote.whatsappText = textValue;
-
-  return textValue;
+  return lines.join("\n");
 }
 
 function renderPrintDocument(container, quote) {
@@ -362,14 +362,15 @@ async function setupAdminPage() {
 
   let quotes = [];
 
-  if (!loginScreen || !adminApp || !loginForm) {
-    console.error("Elementos do login admin não encontrados.");
-    return;
-  }
+  if (!loginScreen || !adminApp || !loginForm) return;
 
   const unlock = async () => {
     loginScreen.hidden = true;
     adminApp.hidden = false;
+
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
 
     try {
       const firebase = await loadFirebaseModule();
@@ -393,8 +394,8 @@ async function setupAdminPage() {
     }
 
     if (error) error.textContent = "";
-
     sessionStorage.setItem("impactoAdmin", "ok");
+
     await unlock();
   });
 
@@ -465,25 +466,11 @@ function applyFilters(quotes) {
       ${(quote.materials || []).map((material) => material.name).join(" ")}
     `.toLowerCase();
 
-    if (filters.client && !String(quote.client?.name || "").toLowerCase().includes(filters.client)) {
-      return false;
-    }
-
-    if (filters.status && quote.status !== filters.status) {
-      return false;
-    }
-
-    if (filters.search && !textBlob.includes(filters.search)) {
-      return false;
-    }
-
-    if (filters.start && created && created < new Date(`${filters.start}T00:00:00`)) {
-      return false;
-    }
-
-    if (filters.end && created && created > new Date(`${filters.end}T23:59:59`)) {
-      return false;
-    }
+    if (filters.client && !String(quote.client?.name || "").toLowerCase().includes(filters.client)) return false;
+    if (filters.status && quote.status !== filters.status) return false;
+    if (filters.search && !textBlob.includes(filters.search)) return false;
+    if (filters.start && created && created < new Date(`${filters.start}T00:00:00`)) return false;
+    if (filters.end && created && created > new Date(`${filters.end}T23:59:59`)) return false;
 
     return true;
   });
@@ -527,11 +514,7 @@ function renderQuotesTable(quotes) {
   if (!table) return;
 
   if (!quotes.length) {
-    table.innerHTML = `
-      <tr>
-        <td colspan="12">Nenhum orçamento encontrado.</td>
-      </tr>
-    `;
+    table.innerHTML = `<tr><td colspan="12">Nenhum orçamento encontrado.</td></tr>`;
     return;
   }
 
@@ -593,21 +576,10 @@ function calculateMetrics(quotes) {
   const lost = quotes.filter((quote) => quote.status === "desistiu").length;
   const inProgress = quotes.filter((quote) => quote.status === "em_andamento").length;
 
-  const quotedValue = quotes.reduce((totalValue, quote) => {
-    return totalValue + (quote.internalCosts?.finalValue || 0);
-  }, 0);
-
-  const closedValue = closedQuotes.reduce((totalValue, quote) => {
-    return totalValue + (quote.internalCosts?.finalValue || 0);
-  }, 0);
-
-  const materialCost = quotes.reduce((totalValue, quote) => {
-    return totalValue + (quote.internalCosts?.totalMaterialPaid || 0);
-  }, 0);
-
-  const grossProfit = quotes.reduce((totalValue, quote) => {
-    return totalValue + (quote.internalCosts?.grossProfit || 0);
-  }, 0);
+  const quotedValue = quotes.reduce((totalValue, quote) => totalValue + (quote.internalCosts?.finalValue || 0), 0);
+  const closedValue = closedQuotes.reduce((totalValue, quote) => totalValue + (quote.internalCosts?.finalValue || 0), 0);
+  const materialCost = quotes.reduce((totalValue, quote) => totalValue + (quote.internalCosts?.totalMaterialPaid || 0), 0);
+  const grossProfit = quotes.reduce((totalValue, quote) => totalValue + (quote.internalCosts?.grossProfit || 0), 0);
 
   return {
     total,
@@ -636,13 +608,20 @@ function formatDate(value) {
 
 function toDate(value) {
   if (!value) return null;
-
-  if (typeof value.toDate === "function") {
-    return value.toDate();
-  }
+  if (typeof value.toDate === "function") return value.toDate();
 
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function normalizeWhatsappNumber(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+
+  if (!digits) return "";
+  if (digits.startsWith("55")) return digits;
+  if (digits.length === 10 || digits.length === 11) return `55${digits}`;
+
+  return digits;
 }
 
 function number(value) {
@@ -659,10 +638,7 @@ function sum(items, key) {
 
 function setText(selector, value) {
   const element = document.querySelector(selector);
-
-  if (element) {
-    element.textContent = value;
-  }
+  if (element) element.textContent = value;
 }
 
 function escapeHtml(value) {
@@ -687,9 +663,6 @@ function toast(message) {
 
   setTimeout(() => {
     element.classList.remove("is-visible");
-
-    setTimeout(() => {
-      element.remove();
-    }, 250);
+    setTimeout(() => element.remove(), 250);
   }, 2600);
 }
