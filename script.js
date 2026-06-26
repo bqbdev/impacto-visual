@@ -25,13 +25,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const hasAdminLogin = document.querySelector("[data-login-form]");
   const hasQuoteForm = document.querySelector("#quoteForm");
 
-  if (page === "orcamento" || hasQuoteForm) {
-    setupQuotePage();
-  }
-
-  if (page === "admin" || hasAdminLogin) {
-    setupAdminPage();
-  }
+  if (page === "orcamento" || hasQuoteForm) setupQuotePage();
+  if (page === "admin" || hasAdminLogin) setupAdminPage();
 });
 
 async function loadFirebaseModule() {
@@ -69,9 +64,7 @@ function setupReveal() {
         observer.unobserve(entry.target);
       }
     });
-  }, {
-    threshold: 0.15
-  });
+  }, { threshold: 0.15 });
 
   items.forEach((item) => observer.observe(item));
 }
@@ -119,7 +112,7 @@ function setupQuotePage() {
   const updateQuoteState = () => {
     lastQuote = buildQuote(form);
     renderSummary(lastQuote);
-    whatsappOutput.value = buildWhatsappText(lastQuote);
+    whatsappOutput.value = lastQuote.whatsappText;
     renderPrintDocument(printArea, lastQuote);
   };
 
@@ -366,11 +359,14 @@ async function setupAdminPage() {
 
   const unlock = async () => {
     loginScreen.hidden = true;
-    adminApp.hidden = false;
+    loginScreen.classList.add("is-hidden");
+    loginScreen.style.display = "none";
 
+    adminApp.hidden = false;
+    adminApp.style.display = "block";
+
+    document.body.classList.add("admin-logged");
     window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
 
     try {
       const firebase = await loadFirebaseModule();
@@ -405,6 +401,7 @@ async function setupAdminPage() {
 
   document.querySelector("[data-logout]")?.addEventListener("click", () => {
     sessionStorage.removeItem("impactoAdmin");
+    document.body.classList.remove("admin-logged");
     location.reload();
   });
 
@@ -457,7 +454,6 @@ function applyFilters(quotes) {
 
   return quotes.filter((quote) => {
     const created = toDate(quote.dates?.issuedAt || quote.createdAt);
-
     const textBlob = `
       ${quote.client?.name || ""}
       ${quote.client?.phone || ""}
