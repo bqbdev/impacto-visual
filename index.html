@@ -3,183 +3,125 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Impacto Visual Comunicação Visual</title>
-  <meta name="description" content="Impacto Visual Comunicação Visual: fachadas, adesivos, banners, placas, letreiros e soluções visuais para empresas.">
+  <meta name="description" content="Impacto Visual Comunicação Visual: fachadas, ACM, letreiros, adesivos, banners, painéis e personalização premium.">
+  <title>Impacto Visual | Comunicação Visual Premium</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <script type="module" src="script.js" defer></script>
 </head>
-<body>
-  <header class="site-header">
-    <nav class="navbar container" aria-label="Menu principal">
-      <a class="brand" href="index.html" aria-label="Impacto Visual Comunicação Visual">
-        <img src="logo.png" alt="Logo Impacto Visual Comunicação Visual">
-        <span>Impacto Visual</span>
-      </a>
-
-      <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
-
-      <div class="nav-links" data-menu>
-        <a href="#servicos">Serviços</a>
-        <a href="#sobre">Sobre</a>
-        <a href="#galeria">Galeria</a>
-        <a href="#contato">Contato</a>
-        <a class="nav-cta" href="orcamento.html">Orçamento interno</a>
-      </div>
+<body data-page="home">
+  <header class="site-header" data-elevate>
+    <a class="brand" href="index.html" aria-label="Impacto Visual">
+      <img src="logo.png" alt="Impacto Visual" class="brand-logo">
+    </a>
+    <button class="nav-toggle" type="button" aria-label="Abrir menu" data-menu-toggle>
+      <span></span><span></span><span></span>
+    </button>
+    <nav class="site-nav" data-menu>
+      <a href="#servicos">Serviços</a>
+      <a href="#sobre">Sobre</a>
+      <a href="#portfolio">Portfólio</a>
+      <a href="#contato">Contato</a>
+      <a class="btn btn-gold btn-sm" href="https://wa.me/5519994971866?text=Ol%C3%A1%20gostaria%20de%20um%20or%C3%A7amento" target="_blank" rel="noopener">Solicitar orçamento</a>
     </nav>
   </header>
 
   <main>
-    <section class="hero section-reveal">
-      <div class="container hero-grid">
-        <div class="hero-content">
+    <section class="hero-section">
+      <div class="hero-grid container">
+        <div class="hero-copy reveal">
           <p class="eyebrow">Comunicação visual premium</p>
-          <h1>Impacto Visual Comunicação Visual</h1>
-          <p class="hero-copy">Projetos visuais modernos para destacar sua marca em fachadas, vitrines, veículos, eventos e ambientes comerciais.</p>
+          <h1>Projetos que fazem sua marca ser vista, lembrada e desejada.</h1>
+          <p class="hero-text">A Impacto Visual cria fachadas, letreiros, ACM, adesivos, banners e soluções personalizadas com acabamento profissional para empresas que querem presença forte no ponto de venda.</p>
           <div class="hero-actions">
-            <a class="btn btn-primary" href="https://wa.me/5500000000000?text=Olá,%20quero%20solicitar%20um%20orçamento%20com%20a%20Impacto%20Visual." target="_blank" rel="noopener">Chamar no WhatsApp</a>
-            <a class="btn btn-secondary" href="#servicos">Ver serviços</a>
+            <a class="btn btn-gold" href="https://wa.me/5519994971866?text=Ol%C3%A1%20gostaria%20de%20um%20or%C3%A7amento" target="_blank" rel="noopener">Solicitar orçamento</a>
+            <a class="btn btn-ghost" href="#portfolio">Ver trabalhos</a>
           </div>
         </div>
-
-        <div class="hero-panel" aria-label="Destaques da empresa">
-          <div class="panel-glow"></div>
-          <img src="logo.png" alt="Logo Impacto Visual Comunicação Visual" class="hero-logo">
-          <div class="hero-stats">
-            <div>
-              <strong>Fachadas</strong>
-              <span>ACM, letras caixa e luminosos</span>
-            </div>
-            <div>
-              <strong>Impressão</strong>
-              <span>Banners, adesivos e lonas</span>
-            </div>
-            <div>
-              <strong>Projetos</strong>
-              <span>Visual completo para negócios</span>
-            </div>
+        <div class="hero-visual reveal">
+          <div class="visual-card visual-card-main">
+            <span>Fachadas</span>
+            <strong>ACM + Letreiros</strong>
           </div>
+          <div class="visual-card visual-card-small">
+            <span>Produção</span>
+            <strong>Premium</strong>
+          </div>
+          <div class="visual-lines" aria-hidden="true"></div>
         </div>
       </div>
     </section>
 
-    <section class="intro-strip section-reveal">
-      <div class="container strip-grid">
-        <article>
-          <span>01</span>
-          <h2>Presença forte</h2>
-          <p>Materiais visuais pensados para atrair atenção e fortalecer a percepção da sua marca.</p>
-        </article>
-        <article>
-          <span>02</span>
-          <h2>Acabamento profissional</h2>
-          <p>Produção com cuidado nos detalhes, proporção, legibilidade e aplicação.</p>
-        </article>
-        <article>
-          <span>03</span>
-          <h2>Atendimento ágil</h2>
-          <p>Orçamento claro, orientação técnica e execução alinhada ao prazo combinado.</p>
-        </article>
+    <section id="servicos" class="section container">
+      <div class="section-heading reveal">
+        <p class="eyebrow">Serviços</p>
+        <h2>Soluções completas para comunicação visual.</h2>
+      </div>
+      <div class="services-grid">
+        <article class="service-card reveal"><span>01</span><h3>Fachadas</h3><p>Projetos de alto impacto para valorizar a entrada da sua empresa.</p></article>
+        <article class="service-card reveal"><span>02</span><h3>ACM</h3><p>Revestimentos modernos com acabamento sofisticado e durável.</p></article>
+        <article class="service-card reveal"><span>03</span><h3>Letreiros</h3><p>Letreiros personalizados para presença visual marcante.</p></article>
+        <article class="service-card reveal"><span>04</span><h3>Adesivos</h3><p>Aplicações comerciais, decorativas e promocionais sob medida.</p></article>
+        <article class="service-card reveal"><span>05</span><h3>Banners</h3><p>Materiais promocionais com leitura clara e acabamento profissional.</p></article>
+        <article class="service-card reveal"><span>06</span><h3>Painéis</h3><p>Painéis internos e externos para orientar, vender e impressionar.</p></article>
+        <article class="service-card reveal"><span>07</span><h3>Comunicação Visual</h3><p>Identidade aplicada em ambientes, vitrines e pontos comerciais.</p></article>
+        <article class="service-card reveal"><span>08</span><h3>Personalização</h3><p>Soluções únicas para projetos especiais, eventos e empresas.</p></article>
       </div>
     </section>
 
-    <section class="services section-reveal" id="servicos">
-      <div class="container">
-        <div class="section-heading">
-          <p class="eyebrow">Soluções visuais</p>
-          <h2>Serviços para sua empresa aparecer melhor</h2>
-        </div>
-
-        <div class="cards-grid">
-          <article class="service-card">
-            <div class="service-icon">ACM</div>
-            <h3>Fachadas em ACM</h3>
-            <p>Projetos modernos para lojas, escritórios, clínicas e pontos comerciais.</p>
-          </article>
-          <article class="service-card">
-            <div class="service-icon">LED</div>
-            <h3>Letreiros e luminosos</h3>
-            <p>Comunicação de alto impacto com excelente leitura e presença noturna.</p>
-          </article>
-          <article class="service-card">
-            <div class="service-icon">VIN</div>
-            <h3>Adesivação</h3>
-            <p>Vitrines, paredes, veículos, placas e sinalização interna personalizada.</p>
-          </article>
-          <article class="service-card">
-            <div class="service-icon">PVC</div>
-            <h3>Placas e sinalização</h3>
-            <p>Identificação visual, placas informativas, direcionais e promocionais.</p>
-          </article>
-          <article class="service-card">
-            <div class="service-icon">BAN</div>
-            <h3>Banners e lonas</h3>
-            <p>Materiais promocionais para campanhas, eventos e divulgação local.</p>
-          </article>
-          <article class="service-card">
-            <div class="service-icon">IMP</div>
-            <h3>Impressão digital</h3>
-            <p>Produção visual sob medida com foco em nitidez, durabilidade e acabamento.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <section class="about section-reveal" id="sobre">
+    <section id="sobre" class="section about-band">
       <div class="container about-grid">
-        <div>
-          <p class="eyebrow">Sobre a empresa</p>
-          <h2>Visual estratégico para marcas que precisam ser lembradas</h2>
+        <div class="section-heading reveal">
+          <p class="eyebrow">Sobre</p>
+          <h2>Acabamento, presença e consistência em cada detalhe.</h2>
         </div>
-        <div class="about-copy">
-          <p>A Impacto Visual Comunicação Visual desenvolve soluções para empresas que buscam uma presença mais forte, moderna e profissional. Cada projeto é pensado para unir estética, clareza e execução eficiente.</p>
-          <p>Da fachada ao material promocional, o objetivo é entregar uma comunicação que valorize a marca e gere confiança no primeiro olhar.</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="gallery section-reveal" id="galeria">
-      <div class="container">
-        <div class="section-heading">
-          <p class="eyebrow">Galeria</p>
-          <h2>Aplicações visuais com acabamento premium</h2>
-        </div>
-        <div class="gallery-grid">
-          <div class="gallery-item"><span>Fachadas comerciais</span></div>
-          <div class="gallery-item"><span>Adesivos e vitrines</span></div>
-          <div class="gallery-item"><span>Placas modernas</span></div>
-          <div class="gallery-item"><span>Comunicação interna</span></div>
+        <div class="about-copy reveal">
+          <p>A Impacto Visual Comunicação Visual atende empresas que precisam transformar ideias em peças físicas de alto padrão. Do primeiro contato à entrega, o foco está em clareza, prazo, qualidade de materiais e uma apresentação final que fortalece a marca do cliente.</p>
+          <div class="stats-row">
+            <div><strong>Premium</strong><span>Experiência visual</span></div>
+            <div><strong>360°</strong><span>Soluções completas</span></div>
+            <div><strong>SP</strong><span>Atendimento regional</span></div>
+          </div>
         </div>
       </div>
     </section>
 
-    <section class="contact section-reveal" id="contato">
-      <div class="container contact-box">
+    <section id="portfolio" class="section container">
+      <div class="section-heading centered reveal">
+        <p class="eyebrow">Galeria</p>
+        <h2>Portfólio preparado para integrar o Instagram oficial.</h2>
+        <p>O layout abaixo está pronto para receber publicações reais quando houver um widget/API compatível. Enquanto isso, funciona como vitrine profissional e direciona o visitante para o Instagram completo.</p>
+      </div>
+      <div class="gallery-grid" aria-label="Portfólio Impacto Visual">
+        <figure class="gallery-item reveal"><div class="gallery-art art-1"></div><figcaption>Fachadas comerciais</figcaption></figure>
+        <figure class="gallery-item reveal"><div class="gallery-art art-2"></div><figcaption>Letreiros e ACM</figcaption></figure>
+        <figure class="gallery-item reveal"><div class="gallery-art art-3"></div><figcaption>Adesivos personalizados</figcaption></figure>
+        <figure class="gallery-item reveal"><div class="gallery-art art-4"></div><figcaption>Banners e painéis</figcaption></figure>
+      </div>
+      <div class="center-actions reveal">
+        <a class="btn btn-dark" href="https://www.instagram.com/impacto.visual_grafica/" target="_blank" rel="noopener">Ver Instagram completo</a>
+      </div>
+    </section>
+
+    <section id="contato" class="section contact-section">
+      <div class="container contact-panel reveal">
         <div>
           <p class="eyebrow">Contato</p>
-          <h2>Pronto para destacar sua marca?</h2>
-          <p>Solicite um atendimento e receba uma proposta para o seu projeto de comunicação visual.</p>
+          <h2>Pronto para tirar seu projeto do papel?</h2>
+          <p>Chame no WhatsApp e solicite um orçamento com atendimento direto.</p>
         </div>
-        <a class="btn btn-primary" href="https://wa.me/5500000000000?text=Olá,%20quero%20falar%20com%20a%20Impacto%20Visual." target="_blank" rel="noopener">Atendimento via WhatsApp</a>
+        <a class="btn btn-gold" href="https://wa.me/5519994971866?text=Ol%C3%A1%20gostaria%20de%20um%20or%C3%A7amento" target="_blank" rel="noopener">+55 19 99497-1866</a>
       </div>
     </section>
   </main>
 
-  <footer class="footer">
-    <div class="container footer-content">
-      <div>
-        <img src="logo.png" alt="Logo Impacto Visual Comunicação Visual">
-        <strong>Impacto Visual Comunicação Visual</strong>
-      </div>
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <img src="logo.png" alt="Impacto Visual" class="footer-logo">
       <p>Site desenvolvido por BQ Systems</p>
     </div>
   </footer>
-
-  <script src="script.js"></script>
 </body>
 </html>
