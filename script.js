@@ -246,3 +246,225 @@ function renderPrintDocument(container, quote) {
     </div>
   `;
 }
+
+async function setupAdminPage() {
+  const loginScreen = document.querySelector("#loginScreen");
+  const adminApp = document.querySelector("#adminApp");
+  const loginForm = document.querySelector("[data-login-form]");
+  const error = document.querySelector("[data-login-error]");
+  let quotes = [];
+
+  const unlock = async () => {
+    loginScreen.hidden = true;
+    adminApp.hidden = false;
+    quotes = await loadQuotes();
+    renderAdmin(quotes);
+  };
+
+  if (sessionStorage.getItem("impactoAdmin") === "ok") await unlock();
+
+  loginForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (new FormData(loginForm).get("password") !== ADMIN_PASSWORD) {
+      error.textContent = "Senha incorreta.";
+      return;
+    }
+    sessionStorage.setItem("impactoAdmin", "ok");
+    await unlock();
+  });
+
+  document.querySelector("[data-logout]")?.addEventListener("click", () => {
+    sessionStorage.removeItem("impactoAdmin");
+    location.reload();
+  });
+
+  document.querySelector("[data-refresh]")?.addEventListener("click", async () => {
+    quotes = await loadQuotes();
+    renderAdmin(quotes);
+  });
+
+  document.querySelectorAll("[data-filter]").forEach((input) => {
+    input.addEventListener("input", () => renderAdmin(applyFilters(quotes)));
+  });
+
+  document.querySelector("[data-quotes-table]")?.addEventListener("change", async (event) => {
+    const select = event.target.closest("[data-status-select]");
+    if (!select) return;
+    await updateQuoteStatus(select.dataset.id, select.value);
+    quotes = quotes.map((quote) => quote.id === select.dataset.id ? { ...quote, status: select.value } : quote);
+    renderAdmin(applyFilters(quotes));
+    toast("Status atualizado.");
+  });
+}
+
+async function loadQuotes() {
+  try {
+    return await getQuotes();
+  } catch (error) {
+    console.error(error);
+    toast("Não foi possível carregar o Firestore.");
+    return [];
+  }
+}
+
+function applyFilters(quotes) {
+  const filters = Object.fromEntries([...document.querySelectorAll("[data-filter]")].map((input) => [input.dataset.filter, input.value.toLowerCase()]));
+  return quotes.filter((quote) => {
+    const created = toDate(quote.dates?.issuedAt || quote.createdAt);
+    const textBlob = `${quote.client?.name} ${quote.client?.phone} ${quote.service?.description} ${(quote.materials || []).map((m) => m.name).join(" ")}`.toLowerCase();
+    if (filters.client && !String(quote.client?.name || "").toLowerCase().includes(filters.client)) return false;
+    if (filters.status && quote.status !== filters.status) return false;
+    if (filters.search && !textBlob.includes(filters.search)) return false;
+    if (filters.start && created < new Date(`${filters.start}T00:00:00`)) return false;
+    if (filters.end && created > new Date(`${filters.end}T23:59:59`)) return false;
+    return true;
+  });
+}
+
+function renderAdmin(quotes) {
+  renderDashboard(quotes);
+  renderQuotesTable(quotes);
+  renderMaterialsTable(quotes);
+}
+
+function renderDashboard(quotes) {
+  const metrics = calculateMetrics(quotes);
+  const cards = [
+    ["Total enviados", metrics.total],
+    ["Total fechados", metrics.closed],
+    ["Total desistiu", metrics.lost],
+    ["Total em andamento", metrics.inProgress],
+    ["Valor orçado", money.format(metrics.quotedValue)],
+    ["Valor fechado", money.format(metrics.closedValue)],
+    ["Gasto em materiais", money.format(metrics.materialCost)],
+    ["Lucro bruto", money.format(metrics.grossProfit)],
+    ["Ticket médio", money.format(metrics.averageTicket)],
+    ["Taxa de conversão", `${metrics.conversionRate.toFixed(1)}%`]
+  ];
+
+  document.querySelector("[data-dashboard]").innerHTML = cards.map(([label, value]) => `
+    <article class="metric-card"><span>${label}</span><strong>${value}</strong></article>
+  `).join("");
+}
+
+function renderQuotesTable(quotes) {
+  document.querySelector("[data-quotes-table]").innerHTML = quotes.map((quote) => {
+    const costs = quote.internalCosts || {};
+    const payment = quote.payment || {};
+    const materials = quote.materials || [];
+    return `
+      <tr>
+        <td>${escapeHtml(quote.client?.name || "-")}</td>
+        <td>${escapeHtml(quote.client?.phone || quote.client?.whatsapp || "-")}</td>
+        <td>${formatDate(quote.dates?.issuedAt || quote.createdAt)}</td>
+        <td>${escapeHtml(quote.service?.description || "-")}</td>
+        <td>${money.format(costs.finalValue || 0)}</td>
+        <td>${money.format(costs.totalMaterialPaid || 0)}</td>
+        <td>${escapeHtml(materials.map((item) => item.name).join(", ") || "-")}</td>
+        <td>${money.format(payment.downPayment || 0)}</td>
+        <td>${money.format(payment.remainingBalance || 0)}</td>
+        <td>${payment.installments || 1}x</td>
+        <td>${formatDate(quote.dates?.validUntil)}</td>
+        <td>
+          <select data-status-select data-id="${quote.id}">
+            ${Object.entries(STATUS_LABELS).map(([value, label]) => `<option value="${value}" ${quote.status === value ? "selected" : ""}>${label}</option>`).join("")}
+          </select>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function renderMaterialsTable(quotes) {
+  const rows = quotes.flatMap((quote) => (quote.materials || []).map((material) => `
+    <tr>
+      <td>${escapeHtml(quote.client?.name || "-")}</td>
+      <td>${escapeHtml(material.name || "-")}</td>
+      <td>${money.format(material.paidValue || 0)}</td>
+      <td>${formatDate(quote.dates?.issuedAt || quote.createdAt)}</td>
+      <td>${STATUS_LABELS[quote.status] || "Em andamento"}</td>
+    </tr>
+  `));
+  document.querySelector("[data-materials-table]").innerHTML = rows.join("");
+}
+
+function calculateMetrics(quotes) {
+  const total = quotes.length;
+  const closedQuotes = quotes.filter((quote) => quote.status === "fechado");
+  const closed = closedQuotes.length;
+  const lost = quotes.filter((quote) => quote.status === "desistiu").length;
+  const inProgress = quotes.filter((quote) => quote.status === "em_andamento").length;
+  const quotedValue = quotes.reduce((totalValue, quote) => totalValue + (quote.internalCosts?.finalValue || 0), 0);
+  const closedValue = closedQuotes.reduce((totalValue, quote) => totalValue + (quote.internalCosts?.finalValue || 0), 0);
+  const materialCost = quotes.reduce((totalValue, quote) => totalValue + (quote.internalCosts?.totalMaterialPaid || 0), 0);
+  const grossProfit = quotes.reduce((totalValue, quote) => totalValue + (quote.internalCosts?.grossProfit || 0), 0);
+
+  return {
+    total,
+    closed,
+    lost,
+    inProgress,
+    quotedValue,
+    closedValue,
+    materialCost,
+    grossProfit,
+    averageTicket: closed ? closedValue / closed : 0,
+    conversionRate: total ? (closed / total) * 100 : 0
+  };
+}
+
+function addDays(date, days) {
+  const copy = new Date(date);
+  copy.setDate(copy.getDate() + days);
+  return copy;
+}
+
+function formatDate(value) {
+  const date = toDate(value);
+  return date ? dateFormat.format(date) : "-";
+}
+
+function toDate(value) {
+  if (!value) return null;
+  if (typeof value.toDate === "function") return value.toDate();
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function number(value) {
+  return Number(String(value || 0).replace(",", ".")) || 0;
+}
+
+function text(value) {
+  return String(value || "").trim();
+}
+
+function sum(items, key) {
+  return items.reduce((total, item) => total + (item[key] || 0), 0);
+}
+
+function setText(selector, value) {
+  const element = document.querySelector(selector);
+  if (element) element.textContent = value;
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function toast(message) {
+  const element = document.createElement("div");
+  element.className = "toast";
+  element.textContent = message;
+  document.body.appendChild(element);
+  requestAnimationFrame(() => element.classList.add("is-visible"));
+  setTimeout(() => {
+    element.classList.remove("is-visible");
+    setTimeout(() => element.remove(), 250);
+  }, 2600);
+}
