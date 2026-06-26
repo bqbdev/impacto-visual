@@ -4,15 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gerador de Orçamentos | Impacto Visual</title>
+
+  <link rel="icon" href="logo.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="style.css">
-  <script type="module" src="script.js" defer></script>
+  <script type="module" src="script.js?v=9" defer></script>
 </head>
+
 <body data-page="orcamento" class="app-body">
   <header class="app-header">
-    <a class="brand" href="index.html"><img src="logo.png" alt="Impacto Visual" class="brand-logo"></a>
+    <a class="brand" href="index.html">
+      <img src="logo.png" alt="Impacto Visual" class="brand-logo">
+    </a>
+
     <nav class="app-nav">
       <a href="index.html">Site</a>
       <a href="admin.html">Admin</a>
@@ -29,6 +36,7 @@
     <form id="quoteForm" class="quote-layout">
       <section class="panel">
         <h2>Dados do cliente</h2>
+
         <div class="form-grid">
           <label>Nome<input name="clientName" required autocomplete="name"></label>
           <label>Telefone<input name="phone" autocomplete="tel"></label>
@@ -45,12 +53,14 @@
           <h2>Materiais internos</h2>
           <button class="btn btn-dark btn-sm" type="button" data-add-material>Adicionar material</button>
         </div>
+
         <div id="materialsList" class="materials-list"></div>
         <p class="private-note">Esses dados são internos e nunca aparecem no texto, impressão ou PDF do cliente.</p>
       </section>
 
       <section class="panel">
         <h2>Pagamento</h2>
+
         <div class="form-grid">
           <label>Entrada<input name="downPayment" type="number" min="0" step="0.01" value="0"></label>
           <label>Parcelas<input name="installments" type="number" min="1" step="1" value="1"></label>
@@ -61,6 +71,7 @@
 
       <aside class="panel summary-panel">
         <h2>Resumo interno</h2>
+
         <div class="summary-list">
           <div><span>Total pago em materiais</span><strong data-summary="paid">R$ 0,00</strong></div>
           <div><span>Acréscimo 22%</span><strong data-summary="increase">R$ 0,00</strong></div>
@@ -68,6 +79,7 @@
           <div><span>Valor final ao cliente</span><strong data-summary="final">R$ 0,00</strong></div>
           <div><span>Validade</span><strong data-summary="validUntil">30 dias</strong></div>
         </div>
+
         <div class="action-grid">
           <button class="btn btn-gold" type="button" data-calculate>Calcular orçamento</button>
           <button class="btn btn-dark" type="button" data-save>Salvar orçamento</button>
@@ -79,8 +91,14 @@
         </div>
       </aside>
 
-      <section class="panel span-all">
-        <h2>Texto WhatsApp</h2>
+      <section class="panel whatsapp-panel span-all">
+        <div class="panel-heading">
+          <h2>Texto WhatsApp</h2>
+          <button class="btn btn-gold btn-sm" type="button" data-whatsapp-client>
+            Enviar para WhatsApp do cliente
+          </button>
+        </div>
+
         <textarea id="whatsappText" class="whatsapp-output" rows="12" readonly></textarea>
       </section>
     </form>
