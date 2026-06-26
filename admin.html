@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Administrativo | Impacto Visual</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="script.js" defer></script>
+</head>
+<body data-page="admin" class="app-body">
+  <div id="loginScreen" class="login-screen">
+    <form class="login-card" data-login-form>
+      <img src="logo.png" alt="Impacto Visual" class="login-logo">
+      <h1>Painel administrativo</h1>
+      <p>Acesso interno protegido por senha local.</p>
+      <label>Senha<input type="password" name="password" required autocomplete="current-password"></label>
+      <button class="btn btn-gold" type="submit">Entrar</button>
+      <small data-login-error></small>
+    </form>
+  </div>
+
+  <div id="adminApp" class="admin-app" hidden>
+    <header class="app-header">
+      <a class="brand" href="index.html"><img src="logo.png" alt="Impacto Visual" class="brand-logo"></a>
+      <nav class="app-nav">
+        <a href="orcamento.html">Orçamentos</a>
+        <a href="index.html">Site</a>
+        <button class="btn btn-outline btn-sm" type="button" data-logout>Sair</button>
+      </nav>
+    </header>
+
+    <main class="app-shell">
+      <section class="app-title">
+        <p class="eyebrow">Dashboard</p>
+        <h1>Controle comercial</h1>
+        <p>Acompanhe orçamentos, materiais, status e resultados financeiros salvos no Firestore.</p>
+      </section>
+
+      <section class="dashboard-grid" data-dashboard></section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <h2>Filtros</h2>
+          <button class="btn btn-outline btn-sm" type="button" data-refresh>Atualizar</button>
+        </div>
+        <div class="filters-grid">
+          <label>Cliente<input data-filter="client" placeholder="Nome do cliente"></label>
+          <label>Pesquisar<input data-filter="search" placeholder="Serviço, telefone, material"></label>
+          <label>Início<input data-filter="start" type="date"></label>
+          <label>Fim<input data-filter="end" type="date"></label>
+          <label>Status
+            <select data-filter="status">
+              <option value="">Todos</option>
+              <option value="em_andamento">Em andamento</option>
+              <option value="fechado">Fechado</option>
+              <option value="desistiu">Desistiu</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="panel table-panel">
+        <h2>Orçamentos</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Cliente</th><th>Telefone</th><th>Data</th><th>Serviço</th><th>Valor final</th><th>Material gasto</th><th>Materiais</th><th>Entrada</th><th>Saldo</th><th>Parcelas</th><th>Validade</th><th>Status</th>
+              </tr>
+            </thead>
+            <tbody data-quotes-table></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel table-panel">
+        <h2>Tabela de materiais</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Cliente</th><th>Material</th><th>Valor</th><th>Data</th><th>Status</th></tr></thead>
+            <tbody data-materials-table></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
