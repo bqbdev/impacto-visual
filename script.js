@@ -271,6 +271,12 @@ function setupQuotePage() {
     setText("#sumBalance", formatMoney(quote.pagamento.saldoRestante));
     setText("#sumInstallment", formatMoney(quote.pagamento.valorParcela));
     setText("#sumValidity", formatDate(quote.datas.validade));
+
+    const balancePreview = document.querySelector("#balancePreview");
+    const installmentPreview = document.querySelector("#installmentPreview");
+
+    if (balancePreview) balancePreview.value = formatMoney(quote.pagamento.saldoRestante);
+    if (installmentPreview) installmentPreview.value = formatMoney(quote.pagamento.valorParcela);
   }
 }
 
@@ -725,6 +731,7 @@ async function generatePdf(quote) {
   const pdf = new jsPDF("p", "mm", "a4");
 
   const pageWidth = 210;
+  const pageHeight = 297;
   const margin = 18;
   const contentWidth = pageWidth - margin * 2;
   const fileName = `orcamento-impacto-visual-${sanitizeFileName(quote.cliente.nome || "cliente")}.pdf`;
@@ -737,36 +744,69 @@ async function generatePdf(quote) {
     logoDataUrl = "";
   }
 
-  pdf.setFillColor(5, 5, 5);
-  pdf.rect(0, 0, 210, 42, "F");
+  let y = 52;
 
-  if (logoDataUrl) {
-    pdf.addImage(logoDataUrl, "PNG", 18, 8, 26, 26);
+  function drawHeader() {
+    pdf.setFillColor(255, 255, 255);
+    pdf.rect(0, 0, pageWidth, 38, "F");
+
+    pdf.setDrawColor(216, 170, 60);
+    pdf.setLineWidth(0.6);
+    pdf.line(margin, 34, pageWidth - margin, 34);
+
+    if (logoDataUrl) {
+      pdf.addImage(logoDataUrl, "PNG", margin, 7, 24, 24);
+    }
+
+    pdf.setTextColor(5, 5, 5);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(16);
+    pdf.text("Impacto Visual", logoDataUrl ? 48 : margin, 16);
+
+    pdf.setTextColor(105, 105, 105);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9);
+    pdf.text("Comunicação Visual Premium", logoDataUrl ? 48 : margin, 23);
   }
 
-  pdf.setTextColor(216, 170, 60);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(18);
-  pdf.text("Impacto Visual", logoDataUrl ? 50 : 18, 18);
+  function drawFooter() {
+    pdf.setDrawColor(230, 230, 230);
+    pdf.line(margin, 284, pageWidth - margin, 284);
 
-  pdf.setTextColor(255, 255, 255);
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(10);
-  pdf.text("Comunicação Visual Premium", logoDataUrl ? 50 : 18, 26);
+    pdf.setTextColor(120, 120, 120);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(8);
+    pdf.text("Impacto Visual Comunicação Visual", margin, 290);
+  }
 
-  pdf.setTextColor(20, 20, 20);
+  function ensureSpace(requiredHeight) {
+    if (y + requiredHeight > 274) {
+      drawFooter();
+      pdf.addPage();
+      drawHeader();
+      y = 50;
+    }
+  }
+
+  drawHeader();
+
+  pdf.setTextColor(5, 5, 5);
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(24);
-  pdf.text("Orçamento", margin, 58);
+  pdf.text("Orçamento", margin, y);
+
+  y += 9;
 
   pdf.setFontSize(10);
   pdf.setTextColor(110, 110, 110);
-  pdf.text(`Emissão: ${formatDate(quote.datas.emissao)}`, margin, 66);
-  pdf.text(`Validade: ${formatDate(quote.datas.validade)}`, margin + 60, 66);
+  pdf.setFont("helvetica", "normal");
+  pdf.text(`Emissão: ${formatDate(quote.datas.emissao)}`, margin, y);
+  pdf.text(`Validade: ${formatDate(quote.datas.validade)}`, margin + 64, y);
 
-  let y = 82;
+  y += 18;
 
-  drawPdfBox(pdf, {
+  ensureSpace(42);
+  y += drawPdfBox(pdf, {
     title: "Cliente",
     y,
     lines: [
@@ -776,11 +816,13 @@ async function generatePdf(quote) {
     ]
   });
 
-  y += 42;
+  y += 8;
 
   const serviceLines = pdf.splitTextToSize(quote.servico.descricao || "-", contentWidth - 14);
+  const serviceBoxHeight = Math.max(34, serviceLines.length * 6 + 24);
 
-  drawPdfBox(pdf, {
+  ensureSpace(serviceBoxHeight);
+  y += drawPdfBox(pdf, {
     title: "Descrição do serviço",
     y,
     lines: [
@@ -789,7 +831,9 @@ async function generatePdf(quote) {
     ].filter(Boolean)
   });
 
-  y += Math.max(48, serviceLines.length * 6 + 30);
+  y += 12;
+
+  ensureSpace(38);
 
   pdf.setFillColor(250, 247, 239);
   pdf.roundedRect(margin, y, contentWidth, 34, 4, 4, "F");
@@ -800,12 +844,13 @@ async function generatePdf(quote) {
   pdf.text("Valor total do orçamento", margin + 8, y + 11);
 
   pdf.setTextColor(5, 5, 5);
-  pdf.setFontSize(24);
+  pdf.setFontSize(23);
   pdf.text(formatMoney(quote.valorFinalCliente), margin + 8, y + 25);
 
-  y += 50;
+  y += 48;
 
-  drawPdfBox(pdf, {
+  ensureSpace(44);
+  y += drawPdfBox(pdf, {
     title: "Pagamento",
     y,
     lines: [
@@ -815,9 +860,10 @@ async function generatePdf(quote) {
     ]
   });
 
-  y += 44;
+  y += 8;
 
-  drawPdfBox(pdf, {
+  ensureSpace(44);
+  y += drawPdfBox(pdf, {
     title: "Validade",
     y,
     lines: [
@@ -826,25 +872,21 @@ async function generatePdf(quote) {
     ]
   });
 
-  y += 42;
+  y += 8;
 
   if (quote.observacoes) {
     const observationLines = pdf.splitTextToSize(quote.observacoes, contentWidth - 14);
+    const observationHeight = Math.max(34, observationLines.length * 6 + 24);
 
-    drawPdfBox(pdf, {
+    ensureSpace(observationHeight);
+    y += drawPdfBox(pdf, {
       title: "Observações",
       y,
       lines: observationLines
     });
   }
 
-  pdf.setFillColor(5, 5, 5);
-  pdf.rect(0, 282, 210, 15, "F");
-
-  pdf.setTextColor(255, 255, 255);
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(9);
-  pdf.text("Impacto Visual Comunicação Visual", margin, 291);
+  drawFooter();
 
   const pdfBlob = pdf.output("blob");
   const pdfFile = new File([pdfBlob], fileName, {
@@ -888,24 +930,26 @@ function drawPdfBox(pdf, { title, y, lines }) {
   const width = 174;
   const lineHeight = 6;
   const cleanLines = lines.filter(Boolean);
-  const height = Math.max(28, cleanLines.length * lineHeight + 18);
+  const height = Math.max(32, cleanLines.length * lineHeight + 22);
 
-  pdf.setDrawColor(226, 226, 226);
+  pdf.setDrawColor(232, 232, 232);
   pdf.setFillColor(255, 255, 255);
   pdf.roundedRect(margin, y, width, height, 4, 4, "FD");
 
   pdf.setTextColor(5, 5, 5);
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(12);
+  pdf.setFontSize(11);
   pdf.text(title, margin + 7, y + 10);
 
   pdf.setTextColor(70, 70, 70);
   pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(10);
+  pdf.setFontSize(9);
 
   cleanLines.forEach((line, index) => {
     pdf.text(String(line), margin + 7, y + 20 + index * lineHeight);
   });
+
+  return height;
 }
 
 function loadImageAsDataUrl(src) {
