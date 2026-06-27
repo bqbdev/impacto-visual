@@ -1,4 +1,5 @@
 const ADMIN_PASSWORD = "impacto2026";
+const WHATSAPP_COMPANY = "5519994971866";
 
 const STATUS_LABELS = {
   em_andamento: "Em andamento",
@@ -6,358 +7,316 @@ const STATUS_LABELS = {
   desistiu: "Desistiu"
 };
 
-const money = new Intl.NumberFormat("pt-BR", {
+const moneyFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL"
 });
 
-const dateFormat = new Intl.DateTimeFormat("pt-BR", {
-  timeZone: "America/Sao_Paulo"
-});
-
-let firebaseModule = null;
+let firebaseApi = null;
 
 document.addEventListener("DOMContentLoaded", () => {
-  setupNavigation();
-  setupReveal();
-
-  const page = document.body.dataset.page;
-  const hasAdminLogin = document.querySelector("[data-login-form]");
-  const hasQuoteForm = document.querySelector("#quoteForm");
-
-  if (page === "orcamento" || hasQuoteForm) setupQuotePage();
-  if (page === "admin" || hasAdminLogin) setupAdminPage();
+  setupSite();
+  setupQuotePage();
+  setupAdminPage();
+  setupPortfolioLightbox();
 });
 
-async function loadFirebaseModule() {
-  if (!firebaseModule) {
-    firebaseModule = await import("./firebase-config.js");
-  }
-
-  return firebaseModule;
-}
-
-function setupNavigation() {
-  const toggle = document.querySelector("[data-menu-toggle]");
-  const menu = document.querySelector("[data-menu]");
-
-  if (!toggle || !menu) return;
-
-  toggle.addEventListener("click", () => {
-    menu.classList.toggle("is-open");
-    toggle.classList.toggle("is-open");
+function setupSite() {
+  document.querySelectorAll('a[href^="#"]').forEach((link) => {
+    link.addEventListener("click", (event) => {
+      const target = document.querySelector(link.getAttribute("href"));
+      if (!target) return;
+      event.preventDefault();
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   });
 }
 
-function setupReveal() {
-  const items = document.querySelectorAll(".reveal");
-
-  if (!("IntersectionObserver" in window)) {
-    items.forEach((item) => item.classList.add("is-visible"));
-    return;
-  }
-
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add("is-visible");
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.15 });
-
-  items.forEach((item) => observer.observe(item));
+async function loadFirebase() {
+  if (firebaseApi) return firebaseApi;
+  firebaseApi = await import("./firebase-config.js");
+  return firebaseApi;
 }
 
 function setupQuotePage() {
   const form = document.querySelector("#quoteForm");
+  if (!form) return;
+
   const materialsList = document.querySelector("#materialsList");
   const whatsappOutput = document.querySelector("#whatsappText");
-  const printArea = document.querySelector("#printArea");
 
-  if (!form || !materialsList || !whatsappOutput || !printArea) return;
+  let lastQuote = buildQuoteData();
 
-  let lastQuote = null;
+  addMaterialRow();
+  updateQuoteState();
 
-  const addMaterial = (name = "", value = "") => {
-    const row = document.createElement("div");
-    row.className = "material-row";
-
-    row.innerHTML = `
-      <label>
-        Material
-        <input data-material-name value="${escapeHtml(name)}" placeholder="Ex.: ACM, lona, adesivo">
-      </label>
-
-      <label>
-        Valor pago
-        <input data-material-value type="number" min="0" step="0.01" value="${value}">
-      </label>
-
-      <button class="icon-button" type="button" aria-label="Remover material" data-remove-material>×</button>
-    `;
-
-    row.querySelector("[data-remove-material]").addEventListener("click", () => {
-      row.remove();
-      updateQuoteState();
-    });
-
-    row.querySelectorAll("input").forEach((input) => {
-      input.addEventListener("input", updateQuoteState);
-    });
-
-    materialsList.appendChild(row);
-  };
-
-  const updateQuoteState = () => {
-    lastQuote = buildQuote(form);
-    renderSummary(lastQuote);
-    whatsappOutput.value = lastQuote.whatsappText;
-    renderPrintDocument(printArea, lastQuote);
-  };
-
-  document.querySelector("[data-add-material]")?.addEventListener("click", () => addMaterial());
-  document.querySelector("[data-calculate]")?.addEventListener("click", updateQuoteState);
-
-  document.querySelector("[data-whatsapp]")?.addEventListener("click", () => {
+  document.querySelector("#addMaterial")?.addEventListener("click", () => {
+    addMaterialRow();
     updateQuoteState();
-    toast("Texto WhatsApp gerado.");
   });
 
-  document.querySelector("[data-whatsapp-client]")?.addEventListener("click", () => {
+  document.querySelector("#calculateQuote")?.addEventListener("click", () => {
     updateQuoteState();
-
-    const clientWhatsapp = normalizeWhatsappNumber(lastQuote.client.whatsapp || lastQuote.client.phone);
-
-    if (!clientWhatsapp) {
-      toast("Cadastre o WhatsApp do cliente antes de enviar.");
-      return;
-    }
-
-    window.open(
-      `https://wa.me/${clientWhatsapp}?text=${encodeURIComponent(whatsappOutput.value)}`,
-      "_blank",
-      "noopener"
-    );
+    toast("Orçamento calculado.");
   });
 
-  document.querySelector("[data-copy]")?.addEventListener("click", async () => {
+  document.querySelector("#generateWhatsapp")?.addEventListener("click", () => {
+    updateQuoteState();
+    toast("Texto gerado.");
+  });
+
+  document.querySelector("#copyWhatsapp")?.addEventListener("click", async () => {
     updateQuoteState();
 
     try {
       await navigator.clipboard.writeText(whatsappOutput.value);
       toast("Texto copiado.");
-    } catch (error) {
-      toast("Não foi possível copiar automaticamente.");
+    } catch {
+      whatsappOutput.select();
+      document.execCommand("copy");
+      toast("Texto copiado.");
     }
   });
 
-  document.querySelector("[data-print]")?.addEventListener("click", () => {
+  document.querySelector("[data-whatsapp-client]")?.addEventListener("click", () => {
     updateQuoteState();
-    window.print();
+
+    const number = normalizeWhatsappNumber(lastQuote.cliente.whatsapp || lastQuote.cliente.telefone);
+
+    if (!number) {
+      toast("Cadastre o WhatsApp do cliente antes de enviar.");
+      return;
+    }
+
+    const url = `https://wa.me/${number}?text=${encodeURIComponent(lastQuote.textoWhatsapp)}`;
+    window.open(url, "_blank", "noopener");
   });
 
-  document.querySelector("[data-pdf]")?.addEventListener("click", () => {
+  document.querySelector("#printQuote")?.addEventListener("click", () => {
     updateQuoteState();
-    toast("Na janela de impressão, escolha 'Salvar como PDF'.");
-    window.print();
+    printProfessionalQuote(lastQuote);
   });
 
-  document.querySelector("[data-clear]")?.addEventListener("click", () => {
+  document.querySelector("#generatePdf")?.addEventListener("click", () => {
+    updateQuoteState();
+    generatePdf(lastQuote);
+  });
+
+  document.querySelector("#clearForm")?.addEventListener("click", () => {
+    if (!confirm("Deseja limpar todo o formulário?")) return;
     form.reset();
     materialsList.innerHTML = "";
-    addMaterial();
+    addMaterialRow();
     updateQuoteState();
   });
 
-  document.querySelector("[data-save]")?.addEventListener("click", async () => {
+  document.querySelector("#saveQuote")?.addEventListener("click", async () => {
     updateQuoteState();
 
-    if (!form.reportValidity()) return;
+    if (!lastQuote.cliente.nome) {
+      toast("Informe o nome do cliente.");
+      return;
+    }
 
     try {
-      const firebase = await loadFirebaseModule();
-      const id = await firebase.saveQuote(lastQuote);
-      toast(`Orçamento salvo: ${id}`);
+      const fb = await loadFirebase();
+
+      await fb.addDoc(fb.collection(fb.db, "orcamentos"), {
+        ...lastQuote,
+        createdAt: fb.serverTimestamp(),
+        updatedAt: fb.serverTimestamp()
+      });
+
+      toast("Orçamento salvo no Firestore.");
     } catch (error) {
       console.error(error);
-      toast("Não foi possível salvar. Confira o Firebase e as regras do Firestore.");
+      toast("Erro ao salvar. Verifique Firebase e regras do Firestore.");
     }
   });
 
   form.addEventListener("input", updateQuoteState);
 
-  addMaterial();
-  updateQuoteState();
-}
+  function addMaterialRow(material = { nome: "", valorPago: "" }) {
+    const row = document.createElement("div");
+    row.className = "material-row";
 
-function buildQuote(form) {
-  const data = new FormData(form);
-  const issuedAt = new Date();
-  const validUntil = addDays(issuedAt, 30);
-  const materials = getMaterials();
-  const costs = calculateCosts(materials);
-  const downPayment = number(data.get("downPayment"));
-  const installments = Math.max(1, parseInt(data.get("installments"), 10) || 1);
-  const remainingBalance = Math.max(0, costs.finalValue - downPayment);
-  const installmentValue = remainingBalance / installments;
+    row.innerHTML = `
+      <label>
+        Nome do material
+        <input type="text" class="material-name" value="${escapeHtml(material.nome)}" placeholder="Ex: ACM, lona, adesivo">
+      </label>
 
-  const quote = {
-    client: {
-      name: text(data.get("clientName")),
-      phone: text(data.get("phone")),
-      whatsapp: text(data.get("whatsapp")),
-      address: text(data.get("address"))
-    },
-    service: {
-      description: text(data.get("serviceDescription")),
-      deadline: text(data.get("deadline")),
-      notes: text(data.get("notes"))
-    },
-    materials,
-    internalCosts: costs,
-    payment: {
-      downPayment,
-      installments,
-      remainingBalance,
-      installmentValue
-    },
-    status: "em_andamento",
-    dates: {
-      issuedAt: issuedAt.toISOString(),
-      validUntil: validUntil.toISOString()
-    },
-    whatsappText: "",
-    observations: text(data.get("notes"))
-  };
+      <label>
+        Valor pago
+        <input type="number" class="material-value" min="0" step="0.01" value="${material.valorPago}" placeholder="0,00">
+      </label>
 
-  quote.whatsappText = buildWhatsappText(quote);
-  return quote;
-}
+      <button class="btn btn-danger btn-sm" type="button">Remover</button>
+    `;
 
-function getMaterials() {
-  return [...document.querySelectorAll(".material-row")]
-    .map((row) => {
-      const paidValue = number(row.querySelector("[data-material-value]")?.value);
+    row.querySelector("button").addEventListener("click", () => {
+      row.remove();
 
-      return {
-        name: text(row.querySelector("[data-material-name]")?.value),
-        paidValue,
-        increase22: paidValue * 0.22,
-        valueWithIncrease: paidValue * 1.22
-      };
-    })
-    .filter((item) => item.name || item.paidValue > 0);
-}
+      if (!materialsList.children.length) {
+        addMaterialRow();
+      }
 
-function calculateCosts(materials) {
-  const totalMaterialPaid = sum(materials, "paidValue");
-  const totalIncrease = sum(materials, "increase22");
-  const totalMaterialWithIncrease = totalMaterialPaid + totalIncrease;
-  const labor = totalMaterialWithIncrease * 2;
+      updateQuoteState();
+    });
 
-  return {
-    totalMaterialPaid,
-    totalIncrease,
-    totalMaterialWithIncrease,
-    labor,
-    finalValue: labor,
-    grossProfit: labor - totalMaterialPaid
-  };
-}
-
-function renderSummary(quote) {
-  setText("[data-summary='paid']", money.format(quote.internalCosts.totalMaterialPaid));
-  setText("[data-summary='increase']", money.format(quote.internalCosts.totalIncrease));
-  setText("[data-summary='withIncrease']", money.format(quote.internalCosts.totalMaterialWithIncrease));
-  setText("[data-summary='final']", money.format(quote.internalCosts.finalValue));
-  setText("[data-summary='validUntil']", dateFormat.format(new Date(quote.dates.validUntil)));
-
-  const balanceInput = document.querySelector("[name='remainingBalance']");
-  const installmentInput = document.querySelector("[name='installmentValue']");
-
-  if (balanceInput) balanceInput.value = money.format(quote.payment.remainingBalance);
-  if (installmentInput) installmentInput.value = money.format(quote.payment.installmentValue);
-}
-
-function buildWhatsappText(quote) {
-  const lines = [
-    `Olá, ${quote.client.name || "cliente"}. Tudo bem?`,
-    "",
-    "Segue o orçamento solicitado pela Impacto Visual Comunicação Visual.",
-    "",
-    `Serviço: ${quote.service.description || "Serviço de comunicação visual"}`,
-    `Valor total: ${money.format(quote.internalCosts.finalValue)}`,
-    `Entrada: ${money.format(quote.payment.downPayment)}`,
-    `Saldo restante: ${money.format(quote.payment.remainingBalance)}`,
-    `Parcelamento: ${quote.payment.installments}x de ${money.format(quote.payment.installmentValue)}`,
-    "",
-    "Este orçamento é válido por 30 dias a partir da data de emissão.",
-    `Validade: ${dateFormat.format(new Date(quote.dates.validUntil))}`
-  ];
-
-  if (quote.service.notes) {
-    lines.push("", `Observações: ${quote.service.notes}`);
+    materialsList.appendChild(row);
   }
 
-  return lines.join("\n");
+  function updateQuoteState() {
+    lastQuote = buildQuoteData();
+    renderQuoteSummary(lastQuote);
+
+    if (whatsappOutput) {
+      whatsappOutput.value = lastQuote.textoWhatsapp;
+    }
+  }
+
+  function buildQuoteData() {
+    const materiais = [...document.querySelectorAll(".material-row")].map((row) => {
+      const nome = row.querySelector(".material-name").value.trim();
+      const valorPago = toNumber(row.querySelector(".material-value").value);
+      const acrescimo22 = valorPago * 0.22;
+      const materialComAcrescimo = valorPago + acrescimo22;
+
+      return {
+        nome,
+        valorPago,
+        acrescimo22,
+        materialComAcrescimo
+      };
+    }).filter((material) => material.nome || material.valorPago > 0);
+
+    const totalMaterialPago = sum(materiais.map((material) => material.valorPago));
+    const totalAcrescimo = sum(materiais.map((material) => material.acrescimo22));
+    const totalMaterialComAcrescimo = totalMaterialPago + totalAcrescimo;
+    const maoDeObra = totalMaterialComAcrescimo * 2;
+    const valorFinalCliente = maoDeObra;
+
+    const entrada = toNumber(document.querySelector("#entryValue")?.value);
+    const parcelas = Math.max(1, parseInt(document.querySelector("#installments")?.value || "1", 10));
+    const saldoRestante = Math.max(valorFinalCliente - entrada, 0);
+    const valorParcela = saldoRestante / parcelas;
+
+    const dataEmissao = new Date();
+    const validade = addDays(dataEmissao, 30);
+
+    const cliente = {
+      nome: document.querySelector("#clientName")?.value.trim() || "",
+      telefone: document.querySelector("#clientPhone")?.value.trim() || "",
+      whatsapp: document.querySelector("#clientWhatsapp")?.value.trim() || "",
+      endereco: document.querySelector("#clientAddress")?.value.trim() || ""
+    };
+
+    const servico = {
+      descricao: document.querySelector("#serviceDescription")?.value.trim() || "Serviço de comunicação visual",
+      prazo: document.querySelector("#deadline")?.value.trim() || ""
+    };
+
+    const observacoes = document.querySelector("#notes")?.value.trim() || "";
+
+    const custosInternos = {
+      totalMaterialPago,
+      totalAcrescimo,
+      totalMaterialComAcrescimo,
+      maoDeObra
+    };
+
+    const pagamento = {
+      entrada,
+      parcelas,
+      saldoRestante,
+      valorParcela
+    };
+
+    const datas = {
+      emissao: dataEmissao.toISOString(),
+      validade: validade.toISOString()
+    };
+
+    const textoWhatsapp = buildWhatsappText({
+      cliente,
+      servico,
+      observacoes,
+      valorFinalCliente,
+      pagamento,
+      datas
+    });
+
+    return {
+      cliente,
+      servico,
+      materiais,
+      custosInternos,
+      valorFinalCliente,
+      pagamento,
+      observacoes,
+      status: "em_andamento",
+      datas,
+      textoWhatsapp
+    };
+  }
+
+  function renderQuoteSummary(quote) {
+    setText("#sumPaid", formatMoney(quote.custosInternos.totalMaterialPago));
+    setText("#sumIncrease", formatMoney(quote.custosInternos.totalAcrescimo));
+    setText("#sumWithIncrease", formatMoney(quote.custosInternos.totalMaterialComAcrescimo));
+    setText("#sumFinal", formatMoney(quote.valorFinalCliente));
+    setText("#sumBalance", formatMoney(quote.pagamento.saldoRestante));
+    setText("#sumInstallment", formatMoney(quote.pagamento.valorParcela));
+    setText("#sumValidity", formatDate(quote.datas.validade));
+  }
 }
 
-function renderPrintDocument(container, quote) {
-  container.innerHTML = `
-    <div class="print-page">
-      <header>
-        <img src="logo.png" alt="Impacto Visual">
-        <div>
-          <strong>Orçamento</strong>
-          <span>${dateFormat.format(new Date(quote.dates.issuedAt))}</span>
-        </div>
-      </header>
-
-      <section>
-        <h2>Cliente</h2>
-        <p>${escapeHtml(quote.client.name || "-")}</p>
-        <p>${escapeHtml(quote.client.phone || quote.client.whatsapp || "-")}</p>
-        <p>${escapeHtml(quote.client.address || "-")}</p>
-      </section>
-
-      <section>
-        <h2>Descrição</h2>
-        <p>${escapeHtml(quote.service.description || "-")}</p>
-      </section>
-
-      <section class="print-value">
-        <span>Valor total</span>
-        <strong>${money.format(quote.internalCosts.finalValue)}</strong>
-      </section>
-
-      <section>
-        <h2>Pagamento</h2>
-        <p>Entrada: ${money.format(quote.payment.downPayment)}</p>
-        <p>Saldo: ${money.format(quote.payment.remainingBalance)}</p>
-        <p>Parcelas: ${quote.payment.installments}x de ${money.format(quote.payment.installmentValue)}</p>
-      </section>
-
-      <section>
-        <h2>Observações</h2>
-        <p>${escapeHtml(quote.service.notes || "Sem observações adicionais.")}</p>
-        <p>Este orçamento é válido por 30 dias a partir da data de emissão.</p>
-      </section>
-    </div>
-  `;
-}
-
-async function setupAdminPage() {
+function setupAdminPage() {
   const loginScreen = document.querySelector("#loginScreen");
   const adminApp = document.querySelector("#adminApp");
-  const loginForm = document.querySelector("[data-login-form]");
-  const error = document.querySelector("[data-login-error]");
-
-  let quotes = [];
+  const loginForm = document.querySelector("#loginForm");
 
   if (!loginScreen || !adminApp || !loginForm) return;
 
-  const unlock = async () => {
+  const logged = sessionStorage.getItem("impacto-admin") === "ok";
+
+  if (logged) {
+    unlockAdmin();
+    loadAdminData();
+  }
+
+  loginForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    const password = document.querySelector("#adminPassword")?.value.trim() || "";
+    const error = document.querySelector("#loginError");
+
+    if (password !== ADMIN_PASSWORD) {
+      if (error) error.hidden = false;
+      return;
+    }
+
+    if (error) error.hidden = true;
+
+    sessionStorage.setItem("impacto-admin", "ok");
+    unlockAdmin();
+    loadAdminData();
+  });
+
+  document.querySelector("#logoutAdmin")?.addEventListener("click", () => {
+    sessionStorage.removeItem("impacto-admin");
+    location.reload();
+  });
+
+  document.querySelector("#reloadAdmin")?.addEventListener("click", loadAdminData);
+
+  ["filterClient", "filterStart", "filterEnd", "filterStatus", "filterSearch"].forEach((id) => {
+    document.querySelector(`#${id}`)?.addEventListener("input", () => renderAdmin(window.__quotes || []));
+    document.querySelector(`#${id}`)?.addEventListener("change", () => renderAdmin(window.__quotes || []));
+  });
+
+  function unlockAdmin() {
     loginScreen.hidden = true;
     loginScreen.classList.add("is-hidden");
     loginScreen.style.display = "none";
@@ -367,228 +326,412 @@ async function setupAdminPage() {
 
     document.body.classList.add("admin-logged");
     window.scrollTo(0, 0);
-
-    try {
-      const firebase = await loadFirebaseModule();
-      quotes = await firebase.getQuotes();
-      renderAdmin(quotes);
-    } catch (firebaseError) {
-      console.error(firebaseError);
-      toast("Entrou, mas não foi possível carregar os dados do Firebase.");
-      renderAdmin([]);
-    }
-  };
-
-  loginForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-
-    const typedPassword = String(new FormData(loginForm).get("password") || "").trim();
-
-    if (typedPassword !== ADMIN_PASSWORD) {
-      if (error) error.textContent = "Senha incorreta.";
-      return;
-    }
-
-    if (error) error.textContent = "";
-    sessionStorage.setItem("impactoAdmin", "ok");
-
-    await unlock();
-  });
-
-  if (sessionStorage.getItem("impactoAdmin") === "ok") {
-    await unlock();
   }
-
-  document.querySelector("[data-logout]")?.addEventListener("click", () => {
-    sessionStorage.removeItem("impactoAdmin");
-    document.body.classList.remove("admin-logged");
-    location.reload();
-  });
-
-  document.querySelector("[data-refresh]")?.addEventListener("click", async () => {
-    try {
-      const firebase = await loadFirebaseModule();
-      quotes = await firebase.getQuotes();
-      renderAdmin(applyFilters(quotes));
-      toast("Dados atualizados.");
-    } catch (error) {
-      console.error(error);
-      toast("Não foi possível atualizar.");
-    }
-  });
-
-  document.querySelectorAll("[data-filter]").forEach((input) => {
-    input.addEventListener("input", () => renderAdmin(applyFilters(quotes)));
-  });
-
-  document.querySelector("[data-quotes-table]")?.addEventListener("change", async (event) => {
-    const select = event.target.closest("[data-status-select]");
-    if (!select) return;
-
-    try {
-      const firebase = await loadFirebaseModule();
-      await firebase.updateQuoteStatus(select.dataset.id, select.value);
-
-      quotes = quotes.map((quote) =>
-        quote.id === select.dataset.id
-          ? { ...quote, status: select.value }
-          : quote
-      );
-
-      renderAdmin(applyFilters(quotes));
-      toast("Status atualizado.");
-    } catch (error) {
-      console.error(error);
-      toast("Não foi possível alterar o status.");
-    }
-  });
 }
 
-function applyFilters(quotes) {
-  const filters = Object.fromEntries(
-    [...document.querySelectorAll("[data-filter]")].map((input) => [
-      input.dataset.filter,
-      input.value.toLowerCase()
-    ])
-  );
+async function loadAdminData() {
+  try {
+    const fb = await loadFirebase();
+    const q = fb.query(fb.collection(fb.db, "orcamentos"), fb.orderBy("createdAt", "desc"));
+    const snapshot = await fb.getDocs(q);
 
-  return quotes.filter((quote) => {
-    const created = toDate(quote.dates?.issuedAt || quote.createdAt);
-    const textBlob = `
-      ${quote.client?.name || ""}
-      ${quote.client?.phone || ""}
-      ${quote.client?.whatsapp || ""}
-      ${quote.service?.description || ""}
-      ${(quote.materials || []).map((material) => material.name).join(" ")}
-    `.toLowerCase();
+    const quotes = snapshot.docs.map((item) => ({
+      id: item.id,
+      ...item.data()
+    }));
 
-    if (filters.client && !String(quote.client?.name || "").toLowerCase().includes(filters.client)) return false;
-    if (filters.status && quote.status !== filters.status) return false;
-    if (filters.search && !textBlob.includes(filters.search)) return false;
-    if (filters.start && created && created < new Date(`${filters.start}T00:00:00`)) return false;
-    if (filters.end && created && created > new Date(`${filters.end}T23:59:59`)) return false;
-
-    return true;
-  });
+    window.__quotes = quotes;
+    renderAdmin(quotes);
+    toast("Dados atualizados.");
+  } catch (error) {
+    console.error(error);
+    toast("Erro ao carregar dados do Firestore.");
+  }
 }
 
 function renderAdmin(quotes) {
-  renderDashboard(quotes);
-  renderQuotesTable(quotes);
-  renderMaterialsTable(quotes);
+  const filtered = applyFilters(quotes);
+
+  renderMetrics(filtered);
+  renderQuotesTable(filtered);
+  renderMaterialsTable(filtered);
 }
 
-function renderDashboard(quotes) {
-  const dashboard = document.querySelector("[data-dashboard]");
-  if (!dashboard) return;
+function applyFilters(quotes) {
+  const client = document.querySelector("#filterClient")?.value.toLowerCase().trim() || "";
+  const start = document.querySelector("#filterStart")?.value || "";
+  const end = document.querySelector("#filterEnd")?.value || "";
+  const status = document.querySelector("#filterStatus")?.value || "";
+  const search = document.querySelector("#filterSearch")?.value.toLowerCase().trim() || "";
 
-  const metrics = calculateMetrics(quotes);
+  return quotes.filter((quote) => {
+    const name = quote.cliente?.nome?.toLowerCase() || "";
+    const phone = quote.cliente?.telefone?.toLowerCase() || "";
+    const service = quote.servico?.descricao?.toLowerCase() || "";
+    const materials = (quote.materiais || []).map((item) => item.nome).join(" ").toLowerCase();
+    const date = quote.datas?.emissao ? quote.datas.emissao.slice(0, 10) : "";
 
-  const cards = [
-    ["Total enviados", metrics.total],
-    ["Total fechados", metrics.closed],
-    ["Total desistiu", metrics.lost],
-    ["Total em andamento", metrics.inProgress],
-    ["Valor orçado", money.format(metrics.quotedValue)],
-    ["Valor fechado", money.format(metrics.closedValue)],
-    ["Gasto em materiais", money.format(metrics.materialCost)],
-    ["Lucro bruto", money.format(metrics.grossProfit)],
-    ["Ticket médio", money.format(metrics.averageTicket)],
-    ["Taxa de conversão", `${metrics.conversionRate.toFixed(1)}%`]
-  ];
+    const matchClient = !client || name.includes(client);
+    const matchStart = !start || date >= start;
+    const matchEnd = !end || date <= end;
+    const matchStatus = !status || quote.status === status;
+    const matchSearch = !search || `${name} ${phone} ${service} ${materials}`.includes(search);
 
-  dashboard.innerHTML = cards.map(([label, value]) => `
-    <article class="metric-card">
-      <span>${label}</span>
-      <strong>${value}</strong>
-    </article>
-  `).join("");
+    return matchClient && matchStart && matchEnd && matchStatus && matchSearch;
+  });
+}
+
+function renderMetrics(quotes) {
+  const total = quotes.length;
+  const closed = quotes.filter((quote) => quote.status === "fechado").length;
+  const lost = quotes.filter((quote) => quote.status === "desistiu").length;
+  const progress = quotes.filter((quote) => quote.status === "em_andamento").length;
+
+  const quotedValue = sum(quotes.map((quote) => quote.valorFinalCliente));
+  const closedValue = sum(quotes.filter((quote) => quote.status === "fechado").map((quote) => quote.valorFinalCliente));
+  const materials = sum(quotes.map((quote) => quote.custosInternos?.totalMaterialPago || 0));
+  const closedMaterials = sum(quotes.filter((quote) => quote.status === "fechado").map((quote) => quote.custosInternos?.totalMaterialPago || 0));
+  const profit = closedValue - closedMaterials;
+  const ticket = closed ? closedValue / closed : 0;
+  const conversion = total ? (closed / total) * 100 : 0;
+
+  setText("#metricTotal", total);
+  setText("#metricClosed", closed);
+  setText("#metricLost", lost);
+  setText("#metricProgress", progress);
+  setText("#metricQuoted", formatMoney(quotedValue));
+  setText("#metricClosedValue", formatMoney(closedValue));
+  setText("#metricMaterials", formatMoney(materials));
+  setText("#metricProfit", formatMoney(profit));
+  setText("#metricTicket", formatMoney(ticket));
+  setText("#metricConversion", `${conversion.toFixed(1)}%`);
 }
 
 function renderQuotesTable(quotes) {
-  const table = document.querySelector("[data-quotes-table]");
-  if (!table) return;
+  const tbody = document.querySelector("#quotesTable");
+  if (!tbody) return;
 
-  if (!quotes.length) {
-    table.innerHTML = `<tr><td colspan="12">Nenhum orçamento encontrado.</td></tr>`;
-    return;
-  }
-
-  table.innerHTML = quotes.map((quote) => {
-    const costs = quote.internalCosts || {};
-    const payment = quote.payment || {};
-    const materials = quote.materials || [];
+  tbody.innerHTML = quotes.map((quote) => {
+    const materials = (quote.materiais || []).map((item) => item.nome).filter(Boolean).join(", ") || "-";
+    const parcelas = `${quote.pagamento?.parcelas || 1}x de ${formatMoney(quote.pagamento?.valorParcela || 0)}`;
 
     return `
       <tr>
-        <td>${escapeHtml(quote.client?.name || "-")}</td>
-        <td>${escapeHtml(quote.client?.phone || quote.client?.whatsapp || "-")}</td>
-        <td>${formatDate(quote.dates?.issuedAt || quote.createdAt)}</td>
-        <td>${escapeHtml(quote.service?.description || "-")}</td>
-        <td>${money.format(costs.finalValue || 0)}</td>
-        <td>${money.format(costs.totalMaterialPaid || 0)}</td>
-        <td>${escapeHtml(materials.map((item) => item.name).join(", ") || "-")}</td>
-        <td>${money.format(payment.downPayment || 0)}</td>
-        <td>${money.format(payment.remainingBalance || 0)}</td>
-        <td>${payment.installments || 1}x</td>
-        <td>${formatDate(quote.dates?.validUntil)}</td>
+        <td>${escapeHtml(quote.cliente?.nome || "-")}</td>
+        <td>${escapeHtml(quote.cliente?.telefone || quote.cliente?.whatsapp || "-")}</td>
+        <td>${formatDate(quote.datas?.emissao)}</td>
+        <td>${escapeHtml(quote.servico?.descricao || "-")}</td>
+        <td>${formatMoney(quote.valorFinalCliente || 0)}</td>
+        <td>${formatMoney(quote.custosInternos?.totalMaterialPago || 0)}</td>
+        <td>${escapeHtml(materials)}</td>
+        <td>${formatMoney(quote.pagamento?.entrada || 0)}</td>
+        <td>${formatMoney(quote.pagamento?.saldoRestante || 0)}</td>
+        <td>${escapeHtml(parcelas)}</td>
+        <td>${formatDate(quote.datas?.validade)}</td>
         <td>
-          <select data-status-select data-id="${quote.id}">
-            ${Object.entries(STATUS_LABELS).map(([value, label]) => `
-              <option value="${value}" ${quote.status === value ? "selected" : ""}>${label}</option>
-            `).join("")}
+          <select data-status-id="${quote.id}">
+            <option value="em_andamento" ${quote.status === "em_andamento" ? "selected" : ""}>Em andamento</option>
+            <option value="fechado" ${quote.status === "fechado" ? "selected" : ""}>Fechado</option>
+            <option value="desistiu" ${quote.status === "desistiu" ? "selected" : ""}>Desistiu</option>
           </select>
         </td>
       </tr>
     `;
-  }).join("");
+  }).join("") || `
+    <tr>
+      <td colspan="12">Nenhum orçamento encontrado.</td>
+    </tr>
+  `;
+
+  tbody.querySelectorAll("[data-status-id]").forEach((select) => {
+    select.addEventListener("change", async () => {
+      const id = select.dataset.statusId;
+      const status = select.value;
+
+      try {
+        const fb = await loadFirebase();
+
+        await fb.updateDoc(fb.doc(fb.db, "orcamentos", id), {
+          status,
+          updatedAt: fb.serverTimestamp()
+        });
+
+        const quote = window.__quotes.find((item) => item.id === id);
+        if (quote) quote.status = status;
+
+        renderAdmin(window.__quotes);
+        toast("Status atualizado.");
+      } catch (error) {
+        console.error(error);
+        toast("Erro ao atualizar status.");
+      }
+    });
+  });
 }
 
 function renderMaterialsTable(quotes) {
-  const table = document.querySelector("[data-materials-table]");
-  if (!table) return;
+  const tbody = document.querySelector("#materialsTable");
+  if (!tbody) return;
 
   const rows = quotes.flatMap((quote) => {
-    return (quote.materials || []).map((material) => `
+    return (quote.materiais || []).map((material) => `
       <tr>
-        <td>${escapeHtml(quote.client?.name || "-")}</td>
-        <td>${escapeHtml(material.name || "-")}</td>
-        <td>${money.format(material.paidValue || 0)}</td>
-        <td>${formatDate(quote.dates?.issuedAt || quote.createdAt)}</td>
-        <td>${STATUS_LABELS[quote.status] || "Em andamento"}</td>
+        <td>${escapeHtml(quote.cliente?.nome || "-")}</td>
+        <td>${escapeHtml(material.nome || "-")}</td>
+        <td>${formatMoney(material.valorPago || 0)}</td>
+        <td>${formatDate(quote.datas?.emissao)}</td>
+        <td>${escapeHtml(STATUS_LABELS[quote.status] || quote.status || "-")}</td>
       </tr>
     `);
   });
 
-  table.innerHTML = rows.length
-    ? rows.join("")
-    : `<tr><td colspan="5">Nenhum material encontrado.</td></tr>`;
+  tbody.innerHTML = rows.join("") || `
+    <tr>
+      <td colspan="5">Nenhum material encontrado.</td>
+    </tr>
+  `;
 }
 
-function calculateMetrics(quotes) {
-  const total = quotes.length;
-  const closedQuotes = quotes.filter((quote) => quote.status === "fechado");
-  const closed = closedQuotes.length;
-  const lost = quotes.filter((quote) => quote.status === "desistiu").length;
-  const inProgress = quotes.filter((quote) => quote.status === "em_andamento").length;
+function setupPortfolioLightbox() {
+  const galleryImages = document.querySelectorAll(
+    ".featured-work img, .real-gallery-item img"
+  );
 
-  const quotedValue = quotes.reduce((totalValue, quote) => totalValue + (quote.internalCosts?.finalValue || 0), 0);
-  const closedValue = closedQuotes.reduce((totalValue, quote) => totalValue + (quote.internalCosts?.finalValue || 0), 0);
-  const materialCost = quotes.reduce((totalValue, quote) => totalValue + (quote.internalCosts?.totalMaterialPaid || 0), 0);
-  const grossProfit = quotes.reduce((totalValue, quote) => totalValue + (quote.internalCosts?.grossProfit || 0), 0);
+  if (!galleryImages.length) return;
 
-  return {
-    total,
-    closed,
-    lost,
-    inProgress,
-    quotedValue,
-    closedValue,
-    materialCost,
-    grossProfit,
-    averageTicket: closed ? closedValue / closed : 0,
-    conversionRate: total ? (closed / total) * 100 : 0
-  };
+  const lightbox = document.createElement("div");
+  lightbox.className = "lightbox";
+  lightbox.innerHTML = `
+    <button class="lightbox-close" type="button" aria-label="Fechar imagem">×</button>
+    <div class="lightbox-content">
+      <img class="lightbox-image" src="" alt="">
+      <div class="lightbox-caption"></div>
+    </div>
+    <div class="lightbox-hint">Clique fora da imagem ou pressione ESC para voltar ao site</div>
+  `;
+
+  document.body.appendChild(lightbox);
+
+  const lightboxImage = lightbox.querySelector(".lightbox-image");
+  const lightboxCaption = lightbox.querySelector(".lightbox-caption");
+  const closeButton = lightbox.querySelector(".lightbox-close");
+
+  galleryImages.forEach((image) => {
+    image.addEventListener("click", () => {
+      const caption =
+        image.closest("figure")?.querySelector("figcaption")?.textContent ||
+        image.closest(".featured-work")?.querySelector("strong")?.textContent ||
+        image.alt ||
+        "Trabalho Impacto Visual";
+
+      lightboxImage.src = image.src;
+      lightboxImage.alt = image.alt || caption;
+      lightboxCaption.textContent = caption;
+
+      lightbox.classList.add("is-open");
+      document.body.style.overflow = "hidden";
+    });
+  });
+
+  function closeLightbox() {
+    lightbox.classList.remove("is-open");
+    lightboxImage.src = "";
+    document.body.style.overflow = "";
+  }
+
+  closeButton.addEventListener("click", closeLightbox);
+
+  lightbox.addEventListener("click", (event) => {
+    if (event.target === lightbox) {
+      closeLightbox();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && lightbox.classList.contains("is-open")) {
+      closeLightbox();
+    }
+  });
+}
+
+function buildWhatsappText({ cliente, servico, observacoes, valorFinalCliente, pagamento, datas }) {
+  const name = cliente.nome ? ` ${cliente.nome}` : "";
+
+  return [
+    `Olá${name}, tudo bem?`,
+    ``,
+    `Segue o orçamento solicitado pela Impacto Visual Comunicação Visual.`,
+    ``,
+    `Serviço: ${servico.descricao}`,
+    servico.prazo ? `Prazo: ${servico.prazo}` : "",
+    `Valor total: ${formatMoney(valorFinalCliente)}`,
+    `Entrada: ${formatMoney(pagamento.entrada)}`,
+    `Saldo restante: ${formatMoney(pagamento.saldoRestante)}`,
+    `Parcelamento: ${pagamento.parcelas}x de ${formatMoney(pagamento.valorParcela)}`,
+    observacoes ? `Observações: ${observacoes}` : "",
+    ``,
+    `Este orçamento é válido por 30 dias a partir da data de emissão.`,
+    `Validade: ${formatDate(datas.validade)}`
+  ].filter(Boolean).join("\n");
+}
+
+function printProfessionalQuote(quote) {
+  const win = window.open("", "_blank");
+
+  win.document.write(`
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <title>Orçamento Impacto Visual</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 40px; color: #111; }
+        .top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #d8aa3c; padding-bottom: 20px; }
+        img { width: 110px; height: 110px; object-fit: contain; }
+        h1 { font-size: 32px; margin: 30px 0 10px; }
+        h2 { margin-top: 28px; }
+        p { line-height: 1.6; }
+        .box { border: 1px solid #ddd; border-radius: 14px; padding: 20px; margin-top: 20px; }
+        .value { font-size: 30px; font-weight: 800; color: #111; }
+        .gold { color: #b98b2e; font-weight: 700; }
+        @media print { button { display: none; } }
+      </style>
+    </head>
+    <body>
+      <div class="top">
+        <img src="logo.png" alt="Impacto Visual">
+        <div>
+          <strong>Impacto Visual Comunicação Visual</strong><br>
+          <span>Orçamento profissional</span>
+        </div>
+      </div>
+
+      <h1>Orçamento</h1>
+
+      <div class="box">
+        <h2>Cliente</h2>
+        <p>
+          <strong>Nome:</strong> ${escapeHtml(quote.cliente.nome || "-")}<br>
+          <strong>Telefone:</strong> ${escapeHtml(quote.cliente.telefone || quote.cliente.whatsapp || "-")}<br>
+          <strong>Endereço:</strong> ${escapeHtml(quote.cliente.endereco || "-")}
+        </p>
+      </div>
+
+      <div class="box">
+        <h2>Descrição</h2>
+        <p>${escapeHtml(quote.servico.descricao || "-")}</p>
+        ${quote.servico.prazo ? `<p><strong>Prazo:</strong> ${escapeHtml(quote.servico.prazo)}</p>` : ""}
+      </div>
+
+      <div class="box">
+        <h2>Valor</h2>
+        <p class="value">${formatMoney(quote.valorFinalCliente)}</p>
+      </div>
+
+      <div class="box">
+        <h2>Pagamento</h2>
+        <p>
+          <strong>Entrada:</strong> ${formatMoney(quote.pagamento.entrada)}<br>
+          <strong>Saldo restante:</strong> ${formatMoney(quote.pagamento.saldoRestante)}<br>
+          <strong>Parcelamento:</strong> ${quote.pagamento.parcelas}x de ${formatMoney(quote.pagamento.valorParcela)}
+        </p>
+      </div>
+
+      <div class="box">
+        <h2>Validade</h2>
+        <p>Este orçamento é válido por 30 dias a partir da data de emissão.</p>
+        <p class="gold">Validade: ${formatDate(quote.datas.validade)}</p>
+      </div>
+
+      ${quote.observacoes ? `
+        <div class="box">
+          <h2>Observações</h2>
+          <p>${escapeHtml(quote.observacoes)}</p>
+        </div>
+      ` : ""}
+
+      <script>
+        window.onload = () => window.print();
+      </script>
+    </body>
+    </html>
+  `);
+
+  win.document.close();
+}
+
+function generatePdf(quote) {
+  if (!window.jspdf) {
+    toast("Biblioteca de PDF não carregada.");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF("p", "mm", "a4");
+
+  pdf.setFillColor(0, 0, 0);
+  pdf.rect(0, 0, 210, 36, "F");
+
+  pdf.setTextColor(216, 170, 60);
+  pdf.setFontSize(18);
+  pdf.text("Impacto Visual", 18, 18);
+
+  pdf.setTextColor(255, 255, 255);
+  pdf.setFontSize(10);
+  pdf.text("Comunicação Visual Premium", 18, 25);
+
+  pdf.setTextColor(0, 0, 0);
+  pdf.setFontSize(24);
+  pdf.text("Orçamento", 18, 52);
+
+  pdf.setFontSize(11);
+  pdf.text(`Cliente: ${quote.cliente.nome || "-"}`, 18, 68);
+  pdf.text(`Telefone: ${quote.cliente.telefone || quote.cliente.whatsapp || "-"}`, 18, 76);
+  pdf.text(`Endereço: ${quote.cliente.endereco || "-"}`, 18, 84);
+
+  pdf.setFontSize(14);
+  pdf.text("Descrição do serviço", 18, 104);
+
+  pdf.setFontSize(11);
+  pdf.text(pdf.splitTextToSize(quote.servico.descricao || "-", 170), 18, 114);
+
+  pdf.setFontSize(14);
+  pdf.text("Valor", 18, 142);
+
+  pdf.setFontSize(24);
+  pdf.text(formatMoney(quote.valorFinalCliente), 18, 154);
+
+  pdf.setFontSize(14);
+  pdf.text("Pagamento", 18, 176);
+
+  pdf.setFontSize(11);
+  pdf.text(`Entrada: ${formatMoney(quote.pagamento.entrada)}`, 18, 186);
+  pdf.text(`Saldo restante: ${formatMoney(quote.pagamento.saldoRestante)}`, 18, 194);
+  pdf.text(`Parcelamento: ${quote.pagamento.parcelas}x de ${formatMoney(quote.pagamento.valorParcela)}`, 18, 202);
+
+  pdf.setFontSize(14);
+  pdf.text("Validade", 18, 224);
+
+  pdf.setFontSize(11);
+  pdf.text("Este orçamento é válido por 30 dias a partir da data de emissão.", 18, 234);
+  pdf.text(`Validade: ${formatDate(quote.datas.validade)}`, 18, 242);
+
+  if (quote.observacoes) {
+    pdf.setFontSize(14);
+    pdf.text("Observações", 18, 260);
+    pdf.setFontSize(11);
+    pdf.text(pdf.splitTextToSize(quote.observacoes, 170), 18, 270);
+  }
+
+  pdf.save(`orcamento-impacto-visual-${Date.now()}.pdf`);
+}
+
+function normalizeWhatsappNumber(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("55")) return digits;
+  if (digits.length === 10 || digits.length === 11) return `55${digits}`;
+  return digits;
 }
 
 function addDays(date, days) {
@@ -597,39 +740,32 @@ function addDays(date, days) {
   return copy;
 }
 
+function toNumber(value) {
+  return Number(String(value || "0").replace(",", ".")) || 0;
+}
+
+function sum(values) {
+  return values.reduce((total, value) => total + (Number(value) || 0), 0);
+}
+
+function formatMoney(value) {
+  return moneyFormatter.format(Number(value) || 0);
+}
+
 function formatDate(value) {
-  const date = toDate(value);
-  return date ? dateFormat.format(date) : "-";
-}
+  if (!value) return "--/--/----";
 
-function toDate(value) {
-  if (!value) return null;
-  if (typeof value.toDate === "function") return value.toDate();
+  let date;
 
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
+  if (value?.toDate) {
+    date = value.toDate();
+  } else {
+    date = new Date(value);
+  }
 
-function normalizeWhatsappNumber(value) {
-  const digits = String(value || "").replace(/\D/g, "");
+  if (Number.isNaN(date.getTime())) return "--/--/----";
 
-  if (!digits) return "";
-  if (digits.startsWith("55")) return digits;
-  if (digits.length === 10 || digits.length === 11) return `55${digits}`;
-
-  return digits;
-}
-
-function number(value) {
-  return Number(String(value || 0).replace(",", ".")) || 0;
-}
-
-function text(value) {
-  return String(value || "").trim();
-}
-
-function sum(items, key) {
-  return items.reduce((total, item) => total + (item[key] || 0), 0);
+  return date.toLocaleDateString("pt-BR");
 }
 
 function setText(selector, value) {
@@ -637,28 +773,28 @@ function setText(selector, value) {
   if (element) element.textContent = value;
 }
 
+function toast(message) {
+  const element = document.querySelector("#toast");
+
+  if (!element) {
+    alert(message);
+    return;
+  }
+
+  element.textContent = message;
+  element.hidden = false;
+
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(() => {
+    element.hidden = true;
+  }, 3200);
+}
+
 function escapeHtml(value) {
-  return String(value || "")
+  return String(value ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
-}
-
-function toast(message) {
-  const element = document.createElement("div");
-  element.className = "toast";
-  element.textContent = message;
-
-  document.body.appendChild(element);
-
-  requestAnimationFrame(() => {
-    element.classList.add("is-visible");
-  });
-
-  setTimeout(() => {
-    element.classList.remove("is-visible");
-    setTimeout(() => element.remove(), 250);
-  }, 2600);
 }
