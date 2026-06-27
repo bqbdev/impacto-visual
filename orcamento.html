@@ -3,95 +3,201 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>Gerador de Orçamentos | Impacto Visual</title>
+
   <link rel="icon" href="logo.png" type="image/png">
+  <link rel="apple-touch-icon" href="logo.png">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-  <script type="module" src="script.js?v=11" defer></script>
-</head>
-<body data-page="orcamento" class="app-body">
-  <header class="app-header">
-    <a class="brand" href="index.html">
-      <img src="logo.png" alt="Impacto Visual" class="brand-logo">
-    </a>
 
-    <nav class="app-nav">
-      <a href="index.html">Site</a>
-      <a href="admin.html">Admin</a>
-    </nav>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="app-body">
+  <header class="app-header">
+    <div class="container app-header-inner">
+      <a href="index.html" class="brand">
+        <img src="logo.png" alt="Impacto Visual">
+      </a>
+
+      <nav class="app-nav">
+        <a href="index.html">Site</a>
+        <a href="admin.html">Admin</a>
+      </nav>
+    </div>
   </header>
 
-  <main class="app-shell">
-    <section class="app-title">
-      <p class="eyebrow">Uso interno</p>
+  <main class="container app-main">
+    <section class="page-title">
+      <span class="eyebrow">Uso interno</span>
       <h1>Gerador de orçamento</h1>
-      <p>Calcule, salve no Firestore, gere texto para WhatsApp e imprima um PDF profissional sem expor cálculos internos ao cliente.</p>
+      <p>
+        Calcule, salve no Firestore, gere texto para WhatsApp, imprima e crie PDF profissional sem expor cálculos internos ao cliente.
+      </p>
     </section>
 
     <form id="quoteForm" class="quote-layout">
       <section class="panel">
         <h2>Dados do cliente</h2>
+
         <div class="form-grid">
-          <label>Nome<input name="clientName" required autocomplete="name"></label>
-          <label>Telefone<input name="phone" autocomplete="tel"></label>
-          <label>WhatsApp<input name="whatsapp" autocomplete="tel"></label>
-          <label>Prazo<input name="deadline" type="date"></label>
-          <label class="span-2">Endereço<input name="address" autocomplete="street-address"></label>
-          <label class="span-2">Descrição do serviço<textarea name="serviceDescription" rows="4" required></textarea></label>
-          <label class="span-2">Observações<textarea name="notes" rows="3"></textarea></label>
+          <label>
+            Nome
+            <input id="clientName" type="text" autocomplete="name" placeholder="Nome do cliente">
+          </label>
+
+          <label>
+            Telefone
+            <input id="clientPhone" type="text" autocomplete="tel" placeholder="(19) 99999-9999">
+          </label>
+
+          <label>
+            WhatsApp
+            <input id="clientWhatsapp" type="text" autocomplete="tel" placeholder="(19) 99999-9999">
+          </label>
+
+          <label>
+            Prazo
+            <input id="deadline" type="text" placeholder="Ex: 10 dias úteis">
+          </label>
+
+          <label class="full">
+            Endereço
+            <input id="clientAddress" type="text" autocomplete="street-address" placeholder="Endereço do cliente">
+          </label>
+
+          <label class="full">
+            Descrição do serviço
+            <textarea id="serviceDescription" rows="4" placeholder="Descreva o serviço solicitado"></textarea>
+          </label>
+
+          <label class="full">
+            Observações
+            <textarea id="notes" rows="4" placeholder="Observações importantes do orçamento"></textarea>
+          </label>
         </div>
       </section>
 
       <section class="panel">
         <div class="panel-heading">
           <h2>Materiais internos</h2>
-          <button class="btn btn-dark btn-sm" type="button" data-add-material>Adicionar material</button>
+          <button class="btn btn-dark btn-sm" type="button" id="addMaterial">
+            Adicionar material
+          </button>
         </div>
 
         <div id="materialsList" class="materials-list"></div>
-        <p class="private-note">Esses dados são internos e nunca aparecem no texto, impressão ou PDF do cliente.</p>
+
+        <p class="private-note">
+          Esses dados são internos e nunca aparecem no texto, impressão ou PDF enviado ao cliente.
+        </p>
       </section>
 
       <section class="panel">
         <h2>Pagamento</h2>
+
         <div class="form-grid">
-          <label>Entrada<input name="downPayment" type="number" min="0" step="0.01" value="0"></label>
-          <label>Parcelas<input name="installments" type="number" min="1" step="1" value="1"></label>
-          <label>Saldo restante<input name="remainingBalance" type="text" readonly></label>
-          <label>Valor das parcelas<input name="installmentValue" type="text" readonly></label>
+          <label>
+            Entrada
+            <input id="entryValue" type="number" min="0" step="0.01" value="0">
+          </label>
+
+          <label>
+            Parcelas
+            <input id="installments" type="number" min="1" step="1" value="1">
+          </label>
+
+          <label>
+            Saldo restante
+            <input type="text" id="balancePreview" readonly placeholder="Calculado automaticamente">
+          </label>
+
+          <label>
+            Valor das parcelas
+            <input type="text" id="installmentPreview" readonly placeholder="Calculado automaticamente">
+          </label>
         </div>
       </section>
 
       <aside class="panel summary-panel">
         <h2>Resumo interno</h2>
 
-        <div class="summary-list">
-          <div><span>Total pago em materiais</span><strong data-summary="paid">R$ 0,00</strong></div>
-          <div><span>Acréscimo 22%</span><strong data-summary="increase">R$ 0,00</strong></div>
-          <div><span>Material com acréscimo</span><strong data-summary="withIncrease">R$ 0,00</strong></div>
-          <div><span>Valor final ao cliente</span><strong data-summary="final">R$ 0,00</strong></div>
-          <div><span>Validade</span><strong data-summary="validUntil">30 dias</strong></div>
+        <div class="summary-row">
+          <span>Total pago em materiais</span>
+          <strong id="sumPaid">R$ 0,00</strong>
         </div>
 
-        <div class="action-grid">
-          <button class="btn btn-gold" type="button" data-calculate>Calcular orçamento</button>
-          <button class="btn btn-dark" type="button" data-save>Salvar orçamento</button>
-          <button class="btn btn-outline" type="button" data-whatsapp>Gerar texto WhatsApp</button>
-          <button class="btn btn-outline" type="button" data-copy>Copiar texto</button>
-          <button class="btn btn-outline" type="button" data-print>Imprimir</button>
-          <button class="btn btn-outline" type="button" data-pdf>Gerar PDF profissional</button>
-          <button class="btn btn-danger" type="button" data-clear>Limpar formulário</button>
+        <div class="summary-row">
+          <span>Acréscimo 22%</span>
+          <strong id="sumIncrease">R$ 0,00</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Material com acréscimo</span>
+          <strong id="sumWithIncrease">R$ 0,00</strong>
+        </div>
+
+        <div class="summary-row highlight">
+          <span>Valor final ao cliente</span>
+          <strong id="sumFinal">R$ 0,00</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Saldo restante</span>
+          <strong id="sumBalance">R$ 0,00</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Valor das parcelas</span>
+          <strong id="sumInstallment">R$ 0,00</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Validade</span>
+          <strong id="sumValidity">30 dias</strong>
+        </div>
+
+        <div class="actions-stack">
+          <button class="btn btn-gold" type="button" id="calculateQuote">
+            Calcular orçamento
+          </button>
+
+          <button class="btn btn-dark" type="button" id="saveQuote">
+            Salvar orçamento
+          </button>
+
+          <button class="btn btn-light" type="button" id="generateWhatsapp">
+            Gerar texto WhatsApp
+          </button>
+
+          <button class="btn btn-light" type="button" id="copyWhatsapp">
+            Copiar texto
+          </button>
+
+          <button class="btn btn-light" type="button" data-whatsapp-client>
+            Enviar para WhatsApp do cliente
+          </button>
+
+          <button class="btn btn-light" type="button" id="printQuote">
+            Imprimir
+          </button>
+
+          <button class="btn btn-light" type="button" id="generatePdf">
+            Gerar PDF profissional
+          </button>
+
+          <button class="btn btn-danger" type="button" id="clearForm">
+            Limpar formulário
+          </button>
         </div>
       </aside>
 
       <section class="panel whatsapp-panel span-all">
         <div class="panel-heading">
           <h2>Texto WhatsApp</h2>
-          <button class="btn btn-gold btn-sm" type="button" data-whatsapp-client>
-            Enviar para WhatsApp do cliente
-          </button>
         </div>
 
         <textarea id="whatsappText" class="whatsapp-output" rows="12" readonly></textarea>
@@ -99,6 +205,9 @@
     </form>
   </main>
 
-  <section id="printArea" class="print-document" aria-hidden="true"></section>
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="script.js?v=12" type="module"></script>
 </body>
 </html>
