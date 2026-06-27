@@ -26,6 +26,7 @@ function setupSite() {
     link.addEventListener("click", (event) => {
       const target = document.querySelector(link.getAttribute("href"));
       if (!target) return;
+
       event.preventDefault();
       target.scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -104,6 +105,7 @@ function setupQuotePage() {
 
   document.querySelector("#clearForm")?.addEventListener("click", () => {
     if (!confirm("Deseja limpar todo o formulário?")) return;
+
     form.reset();
     materialsList.innerHTML = "";
     addMaterialRow();
@@ -276,37 +278,43 @@ function setupAdminPage() {
   const loginScreen = document.querySelector("#loginScreen");
   const adminApp = document.querySelector("#adminApp");
   const loginForm = document.querySelector("#loginForm");
+  const loginButton = document.querySelector("#adminLoginButton");
+  const passwordInput = document.querySelector("#adminPassword");
+  const error = document.querySelector("#loginError");
 
   if (!loginScreen || !adminApp || !loginForm) return;
 
-  const logged = sessionStorage.getItem("impacto-admin") === "ok";
+  cleanPasswordFromUrl();
 
-  if (logged) {
+  if (sessionStorage.getItem("impacto-admin") === "ok") {
     unlockAdmin();
     loadAdminData();
   }
 
+  loginForm.setAttribute("method", "post");
+  loginForm.setAttribute("action", "javascript:void(0)");
+
   loginForm.addEventListener("submit", (event) => {
     event.preventDefault();
+    event.stopPropagation();
+    tryLogin();
+    return false;
+  });
 
-    const password = document.querySelector("#adminPassword")?.value.trim() || "";
-    const error = document.querySelector("#loginError");
+  loginButton?.addEventListener("click", () => {
+    tryLogin();
+  });
 
-    if (password !== ADMIN_PASSWORD) {
-      if (error) error.hidden = false;
-      return;
+  passwordInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      tryLogin();
     }
-
-    if (error) error.hidden = true;
-
-    sessionStorage.setItem("impacto-admin", "ok");
-    unlockAdmin();
-    loadAdminData();
   });
 
   document.querySelector("#logoutAdmin")?.addEventListener("click", () => {
     sessionStorage.removeItem("impacto-admin");
-    location.reload();
+    window.location.href = "admin.html";
   });
 
   document.querySelector("#reloadAdmin")?.addEventListener("click", loadAdminData);
@@ -315,6 +323,28 @@ function setupAdminPage() {
     document.querySelector(`#${id}`)?.addEventListener("input", () => renderAdmin(window.__quotes || []));
     document.querySelector(`#${id}`)?.addEventListener("change", () => renderAdmin(window.__quotes || []));
   });
+
+  function tryLogin() {
+    const password = passwordInput?.value.trim() || "";
+
+    if (password !== ADMIN_PASSWORD) {
+      if (error) error.hidden = false;
+
+      if (passwordInput) {
+        passwordInput.value = "";
+        passwordInput.focus();
+      }
+
+      return;
+    }
+
+    if (error) error.hidden = true;
+
+    sessionStorage.setItem("impacto-admin", "ok");
+    cleanPasswordFromUrl();
+    unlockAdmin();
+    loadAdminData();
+  }
 
   function unlockAdmin() {
     loginScreen.hidden = true;
@@ -326,6 +356,12 @@ function setupAdminPage() {
 
     document.body.classList.add("admin-logged");
     window.scrollTo(0, 0);
+  }
+
+  function cleanPasswordFromUrl() {
+    if (window.location.search) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }
 }
 
