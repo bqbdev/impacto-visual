@@ -368,21 +368,40 @@ function setupAdminPage() {
 async function loadAdminData() {
   try {
     const fb = await loadFirebase();
-    const q = fb.query(fb.collection(fb.db, "orcamentos"), fb.orderBy("createdAt", "desc"));
-    const snapshot = await fb.getDocs(q);
+    const snapshot = await fb.getDocs(fb.collection(fb.db, "orcamentos"));
 
     const quotes = snapshot.docs.map((item) => ({
       id: item.id,
       ...item.data()
     }));
 
+    quotes.sort((a, b) => getQuoteTime(b) - getQuoteTime(a));
+
     window.__quotes = quotes;
     renderAdmin(quotes);
     toast("Dados atualizados.");
   } catch (error) {
-    console.error(error);
-    toast("Erro ao carregar dados do Firestore.");
+    console.error("Erro ao carregar dados do Firestore:", error);
+
+    const message = error?.code
+      ? `Erro ao carregar dados do Firestore: ${error.code}`
+      : "Erro ao carregar dados do Firestore.";
+
+    toast(message);
   }
+}
+
+function getQuoteTime(quote) {
+  if (quote.createdAt?.toDate) {
+    return quote.createdAt.toDate().getTime();
+  }
+
+  if (quote.datas?.emissao) {
+    const date = new Date(quote.datas.emissao);
+    return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+  }
+
+  return 0;
 }
 
 function renderAdmin(quotes) {
