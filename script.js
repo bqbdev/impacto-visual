@@ -443,15 +443,18 @@ function applyFilters(quotes) {
 }
 
 function renderMetrics(quotes) {
+  const activeQuotes = quotes.filter((quote) => quote.status !== "desistiu");
+  const closedQuotes = quotes.filter((quote) => quote.status === "fechado");
+
   const total = quotes.length;
-  const closed = quotes.filter((quote) => quote.status === "fechado").length;
+  const closed = closedQuotes.length;
   const lost = quotes.filter((quote) => quote.status === "desistiu").length;
   const progress = quotes.filter((quote) => quote.status === "em_andamento").length;
 
-  const quotedValue = sum(quotes.map((quote) => quote.valorFinalCliente));
-  const closedValue = sum(quotes.filter((quote) => quote.status === "fechado").map((quote) => quote.valorFinalCliente));
-  const materials = sum(quotes.map((quote) => quote.custosInternos?.totalMaterialPago || 0));
-  const closedMaterials = sum(quotes.filter((quote) => quote.status === "fechado").map((quote) => quote.custosInternos?.totalMaterialPago || 0));
+  const quotedValue = sum(activeQuotes.map((quote) => quote.valorFinalCliente));
+  const closedValue = sum(closedQuotes.map((quote) => quote.valorFinalCliente));
+  const materials = sum(activeQuotes.map((quote) => quote.custosInternos?.totalMaterialPago || 0));
+  const closedMaterials = sum(closedQuotes.map((quote) => quote.custosInternos?.totalMaterialPago || 0));
   const profit = closedValue - closedMaterials;
   const ticket = closed ? closedValue / closed : 0;
   const conversion = total ? (closed / total) * 100 : 0;
@@ -473,7 +476,14 @@ function renderQuotesTable(quotes) {
   if (!tbody) return;
 
   tbody.innerHTML = quotes.map((quote) => {
-    const materials = (quote.materiais || []).map((item) => item.nome).filter(Boolean).join(", ") || "-";
+    const materials = quote.status === "desistiu"
+      ? "-"
+      : (quote.materiais || []).map((item) => item.nome).filter(Boolean).join(", ") || "-";
+
+    const materialCost = quote.status === "desistiu"
+      ? 0
+      : quote.custosInternos?.totalMaterialPago || 0;
+
     const parcelas = `${quote.pagamento?.parcelas || 1}x de ${formatMoney(quote.pagamento?.valorParcela || 0)}`;
 
     return `
@@ -483,7 +493,7 @@ function renderQuotesTable(quotes) {
         <td>${formatDate(quote.datas?.emissao)}</td>
         <td>${escapeHtml(quote.servico?.descricao || "-")}</td>
         <td>${formatMoney(quote.valorFinalCliente || 0)}</td>
-        <td>${formatMoney(quote.custosInternos?.totalMaterialPago || 0)}</td>
+        <td>${quote.status === "desistiu" ? "-" : formatMoney(materialCost)}</td>
         <td>${escapeHtml(materials)}</td>
         <td>${formatMoney(quote.pagamento?.entrada || 0)}</td>
         <td>${formatMoney(quote.pagamento?.saldoRestante || 0)}</td>
@@ -534,7 +544,9 @@ function renderMaterialsTable(quotes) {
   const tbody = document.querySelector("#materialsTable");
   if (!tbody) return;
 
-  const rows = quotes.flatMap((quote) => {
+  const activeQuotes = quotes.filter((quote) => quote.status !== "desistiu");
+
+  const rows = activeQuotes.flatMap((quote) => {
     return (quote.materiais || []).map((material) => `
       <tr>
         <td>${escapeHtml(quote.cliente?.nome || "-")}</td>
@@ -548,7 +560,7 @@ function renderMaterialsTable(quotes) {
 
   tbody.innerHTML = rows.join("") || `
     <tr>
-      <td colspan="5">Nenhum material encontrado.</td>
+      <td colspan="5">Nenhum material ativo encontrado.</td>
     </tr>
   `;
 }
@@ -731,7 +743,6 @@ async function generatePdf(quote) {
   const pdf = new jsPDF("p", "mm", "a4");
 
   const pageWidth = 210;
-  const pageHeight = 297;
   const margin = 18;
   const contentWidth = pageWidth - margin * 2;
   const fileName = `orcamento-impacto-visual-${sanitizeFileName(quote.cliente.nome || "cliente")}.pdf`;
