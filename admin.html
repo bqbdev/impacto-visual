@@ -3,77 +3,153 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>Painel Administrativo | Impacto Visual</title>
+
   <link rel="icon" href="logo.png" type="image/png">
+  <link rel="apple-touch-icon" href="logo.png">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="style.css">
-  <script type="module" src="script.js?v=11" defer></script>
 </head>
-<body data-page="admin" class="app-body">
-  <div id="loginScreen" class="login-screen">
-    <form class="login-card" data-login-form>
-      <img src="logo.png" alt="Impacto Visual" class="login-logo">
+<body class="admin-body">
+  <section id="loginScreen" class="login-screen">
+    <form id="loginForm" class="login-card" method="post" action="javascript:void(0)" autocomplete="off">
+      <img src="logo.png" alt="Impacto Visual">
+
       <h1>Painel administrativo</h1>
       <p>Acesso interno protegido por senha local.</p>
 
       <label>
         Senha
-        <input type="password" name="password" required autocomplete="current-password">
+        <input id="adminPassword" type="password" autocomplete="current-password">
       </label>
 
-      <button class="btn btn-gold" type="submit">Entrar</button>
-      <small data-login-error></small>
+      <button class="btn btn-gold" type="button" id="adminLoginButton">Entrar</button>
+
+      <small id="loginError" class="error-text" hidden>Senha incorreta.</small>
     </form>
-  </div>
+  </section>
 
   <div id="adminApp" class="admin-app" hidden>
     <header class="app-header">
-      <a class="brand" href="index.html">
-        <img src="logo.png" alt="Impacto Visual" class="brand-logo">
-      </a>
+      <div class="container app-header-inner">
+        <a href="index.html" class="brand">
+          <img src="logo.png" alt="Impacto Visual">
+        </a>
 
-      <nav class="app-nav">
-        <a href="orcamento.html">Orçamentos</a>
-        <a href="index.html">Site</a>
-        <button class="btn btn-outline btn-sm" type="button" data-logout>Sair</button>
-      </nav>
+        <nav class="app-nav">
+          <a href="orcamento.html">Orçamentos</a>
+          <a href="index.html">Site</a>
+          <button class="btn btn-light btn-sm" type="button" id="logoutAdmin">Sair</button>
+        </nav>
+      </div>
     </header>
 
-    <main class="app-shell">
-      <section class="app-title">
-        <p class="eyebrow">Dashboard</p>
+    <main class="container app-main">
+      <section class="page-title">
+        <span class="eyebrow">Dashboard</span>
         <h1>Controle comercial</h1>
         <p>Acompanhe orçamentos, materiais, status e resultados financeiros salvos no Firestore.</p>
       </section>
 
-      <section class="dashboard-grid" data-dashboard></section>
+      <section class="dashboard-grid">
+        <article class="metric-card">
+          <span>Total enviados</span>
+          <strong id="metricTotal">0</strong>
+        </article>
+
+        <article class="metric-card">
+          <span>Total fechados</span>
+          <strong id="metricClosed">0</strong>
+        </article>
+
+        <article class="metric-card">
+          <span>Total desistiu</span>
+          <strong id="metricLost">0</strong>
+        </article>
+
+        <article class="metric-card">
+          <span>Total em andamento</span>
+          <strong id="metricProgress">0</strong>
+        </article>
+
+        <article class="metric-card">
+          <span>Valor orçado</span>
+          <strong id="metricQuoted">R$ 0,00</strong>
+        </article>
+
+        <article class="metric-card">
+          <span>Valor fechado</span>
+          <strong id="metricClosedValue">R$ 0,00</strong>
+        </article>
+
+        <article class="metric-card">
+          <span>Gasto em materiais</span>
+          <strong id="metricMaterials">R$ 0,00</strong>
+        </article>
+
+        <article class="metric-card">
+          <span>Lucro bruto</span>
+          <strong id="metricProfit">R$ 0,00</strong>
+        </article>
+
+        <article class="metric-card">
+          <span>Ticket médio</span>
+          <strong id="metricTicket">R$ 0,00</strong>
+        </article>
+
+        <article class="metric-card">
+          <span>Taxa de conversão</span>
+          <strong id="metricConversion">0%</strong>
+        </article>
+      </section>
 
       <section class="panel">
         <div class="panel-heading">
           <h2>Filtros</h2>
-          <button class="btn btn-outline btn-sm" type="button" data-refresh>Atualizar</button>
+          <button class="btn btn-dark btn-sm" type="button" id="reloadAdmin">Atualizar</button>
         </div>
 
         <div class="filters-grid">
-          <label>Cliente<input data-filter="client" placeholder="Nome do cliente"></label>
-          <label>Pesquisar<input data-filter="search" placeholder="Serviço, telefone, material"></label>
-          <label>Início<input data-filter="start" type="date"></label>
-          <label>Fim<input data-filter="end" type="date"></label>
-          <label>Status
-            <select data-filter="status">
+          <label>
+            Cliente
+            <input id="filterClient" type="text" placeholder="Nome do cliente">
+          </label>
+
+          <label>
+            De
+            <input id="filterStart" type="date">
+          </label>
+
+          <label>
+            Até
+            <input id="filterEnd" type="date">
+          </label>
+
+          <label>
+            Status
+            <select id="filterStatus">
               <option value="">Todos</option>
               <option value="em_andamento">Em andamento</option>
               <option value="fechado">Fechado</option>
               <option value="desistiu">Desistiu</option>
             </select>
           </label>
+
+          <label>
+            Pesquisar
+            <input id="filterSearch" type="text" placeholder="Serviço, material, telefone">
+          </label>
         </div>
       </section>
 
-      <section class="panel table-panel">
+      <section class="panel">
         <h2>Orçamentos</h2>
+
         <div class="table-wrap">
           <table>
             <thead>
@@ -84,7 +160,7 @@
                 <th>Serviço</th>
                 <th>Valor final</th>
                 <th>Material gasto</th>
-                <th>Materiais</th>
+                <th>Materiais utilizados</th>
                 <th>Entrada</th>
                 <th>Saldo</th>
                 <th>Parcelas</th>
@@ -92,13 +168,14 @@
                 <th>Status</th>
               </tr>
             </thead>
-            <tbody data-quotes-table></tbody>
+            <tbody id="quotesTable"></tbody>
           </table>
         </div>
       </section>
 
-      <section class="panel table-panel">
+      <section class="panel">
         <h2>Tabela de materiais</h2>
+
         <div class="table-wrap">
           <table>
             <thead>
@@ -110,11 +187,15 @@
                 <th>Status</th>
               </tr>
             </thead>
-            <tbody data-materials-table></tbody>
+            <tbody id="materialsTable"></tbody>
           </table>
         </div>
       </section>
     </main>
   </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="script.js" type="module"></script>
 </body>
 </html>
