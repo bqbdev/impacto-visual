@@ -660,7 +660,7 @@ function printProfessionalQuote(quote) {
   win.document.close();
 }
 
-function generatePdf(quote) {
+async function generatePdf(quote) {
   if (!window.jspdf) {
     toast("Biblioteca de PDF não carregada.");
     return;
@@ -669,61 +669,212 @@ function generatePdf(quote) {
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF("p", "mm", "a4");
 
-  pdf.setFillColor(0, 0, 0);
-  pdf.rect(0, 0, 210, 36, "F");
+  const pageWidth = 210;
+  const margin = 18;
+  const contentWidth = pageWidth - margin * 2;
+  const fileName = `orcamento-impacto-visual-${sanitizeFileName(quote.cliente.nome || "cliente")}.pdf`;
 
-  pdf.setTextColor(216, 170, 60);
-  pdf.setFontSize(18);
-  pdf.text("Impacto Visual", 18, 18);
+  let logoDataUrl = "";
 
-  pdf.setTextColor(255, 255, 255);
-  pdf.setFontSize(10);
-  pdf.text("Comunicação Visual Premium", 18, 25);
-
-  pdf.setTextColor(0, 0, 0);
-  pdf.setFontSize(24);
-  pdf.text("Orçamento", 18, 52);
-
-  pdf.setFontSize(11);
-  pdf.text(`Cliente: ${quote.cliente.nome || "-"}`, 18, 68);
-  pdf.text(`Telefone: ${quote.cliente.telefone || quote.cliente.whatsapp || "-"}`, 18, 76);
-  pdf.text(`Endereço: ${quote.cliente.endereco || "-"}`, 18, 84);
-
-  pdf.setFontSize(14);
-  pdf.text("Descrição do serviço", 18, 104);
-
-  pdf.setFontSize(11);
-  pdf.text(pdf.splitTextToSize(quote.servico.descricao || "-", 170), 18, 114);
-
-  pdf.setFontSize(14);
-  pdf.text("Valor", 18, 142);
-
-  pdf.setFontSize(24);
-  pdf.text(formatMoney(quote.valorFinalCliente), 18, 154);
-
-  pdf.setFontSize(14);
-  pdf.text("Pagamento", 18, 176);
-
-  pdf.setFontSize(11);
-  pdf.text(`Entrada: ${formatMoney(quote.pagamento.entrada)}`, 18, 186);
-  pdf.text(`Saldo restante: ${formatMoney(quote.pagamento.saldoRestante)}`, 18, 194);
-  pdf.text(`Parcelamento: ${quote.pagamento.parcelas}x de ${formatMoney(quote.pagamento.valorParcela)}`, 18, 202);
-
-  pdf.setFontSize(14);
-  pdf.text("Validade", 18, 224);
-
-  pdf.setFontSize(11);
-  pdf.text("Este orçamento é válido por 30 dias a partir da data de emissão.", 18, 234);
-  pdf.text(`Validade: ${formatDate(quote.datas.validade)}`, 18, 242);
-
-  if (quote.observacoes) {
-    pdf.setFontSize(14);
-    pdf.text("Observações", 18, 260);
-    pdf.setFontSize(11);
-    pdf.text(pdf.splitTextToSize(quote.observacoes, 170), 18, 270);
+  try {
+    logoDataUrl = await loadImageAsDataUrl("logo.png");
+  } catch {
+    logoDataUrl = "";
   }
 
-  pdf.save(`orcamento-impacto-visual-${Date.now()}.pdf`);
+  pdf.setFillColor(5, 5, 5);
+  pdf.rect(0, 0, 210, 42, "F");
+
+  if (logoDataUrl) {
+    pdf.addImage(logoDataUrl, "PNG", 18, 8, 26, 26);
+  }
+
+  pdf.setTextColor(216, 170, 60);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(18);
+  pdf.text("Impacto Visual", logoDataUrl ? 50 : 18, 18);
+
+  pdf.setTextColor(255, 255, 255);
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(10);
+  pdf.text("Comunicação Visual Premium", logoDataUrl ? 50 : 18, 26);
+
+  pdf.setTextColor(20, 20, 20);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(24);
+  pdf.text("Orçamento", margin, 58);
+
+  pdf.setFontSize(10);
+  pdf.setTextColor(110, 110, 110);
+  pdf.text(`Emissão: ${formatDate(quote.datas.emissao)}`, margin, 66);
+  pdf.text(`Validade: ${formatDate(quote.datas.validade)}`, margin + 60, 66);
+
+  let y = 82;
+
+  drawPdfBox(pdf, {
+    title: "Cliente",
+    y,
+    lines: [
+      `Nome: ${quote.cliente.nome || "-"}`,
+      `Telefone: ${quote.cliente.telefone || quote.cliente.whatsapp || "-"}`,
+      `Endereço: ${quote.cliente.endereco || "-"}`
+    ]
+  });
+
+  y += 42;
+
+  const serviceLines = pdf.splitTextToSize(quote.servico.descricao || "-", contentWidth - 14);
+
+  drawPdfBox(pdf, {
+    title: "Descrição do serviço",
+    y,
+    lines: [
+      ...serviceLines,
+      quote.servico.prazo ? `Prazo: ${quote.servico.prazo}` : ""
+    ].filter(Boolean)
+  });
+
+  y += Math.max(48, serviceLines.length * 6 + 30);
+
+  pdf.setFillColor(250, 247, 239);
+  pdf.roundedRect(margin, y, contentWidth, 34, 4, 4, "F");
+
+  pdf.setTextColor(105, 105, 105);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(10);
+  pdf.text("Valor total do orçamento", margin + 8, y + 11);
+
+  pdf.setTextColor(5, 5, 5);
+  pdf.setFontSize(24);
+  pdf.text(formatMoney(quote.valorFinalCliente), margin + 8, y + 25);
+
+  y += 50;
+
+  drawPdfBox(pdf, {
+    title: "Pagamento",
+    y,
+    lines: [
+      `Entrada: ${formatMoney(quote.pagamento.entrada)}`,
+      `Saldo restante: ${formatMoney(quote.pagamento.saldoRestante)}`,
+      `Parcelamento: ${quote.pagamento.parcelas}x de ${formatMoney(quote.pagamento.valorParcela)}`
+    ]
+  });
+
+  y += 44;
+
+  drawPdfBox(pdf, {
+    title: "Validade",
+    y,
+    lines: [
+      "Este orçamento é válido por 30 dias a partir da data de emissão.",
+      `Validade: ${formatDate(quote.datas.validade)}`
+    ]
+  });
+
+  y += 42;
+
+  if (quote.observacoes) {
+    const observationLines = pdf.splitTextToSize(quote.observacoes, contentWidth - 14);
+
+    drawPdfBox(pdf, {
+      title: "Observações",
+      y,
+      lines: observationLines
+    });
+  }
+
+  pdf.setFillColor(5, 5, 5);
+  pdf.rect(0, 282, 210, 15, "F");
+
+  pdf.setTextColor(255, 255, 255);
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(9);
+  pdf.text("Impacto Visual Comunicação Visual", margin, 291);
+
+  const pdfBlob = pdf.output("blob");
+  const pdfFile = new File([pdfBlob], fileName, {
+    type: "application/pdf"
+  });
+
+  if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+    try {
+      await navigator.share({
+        title: "Orçamento Impacto Visual",
+        text: `Orçamento para ${quote.cliente.nome || "cliente"}`,
+        files: [pdfFile]
+      });
+
+      toast("PDF pronto para compartilhar.");
+      return;
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        console.error(error);
+      }
+    }
+  }
+
+  const pdfUrl = URL.createObjectURL(pdfBlob);
+  const link = document.createElement("a");
+  link.href = pdfUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  setTimeout(() => {
+    URL.revokeObjectURL(pdfUrl);
+  }, 1000);
+
+  toast("PDF gerado para download.");
+}
+
+function drawPdfBox(pdf, { title, y, lines }) {
+  const margin = 18;
+  const width = 174;
+  const lineHeight = 6;
+  const cleanLines = lines.filter(Boolean);
+  const height = Math.max(28, cleanLines.length * lineHeight + 18);
+
+  pdf.setDrawColor(226, 226, 226);
+  pdf.setFillColor(255, 255, 255);
+  pdf.roundedRect(margin, y, width, height, 4, 4, "FD");
+
+  pdf.setTextColor(5, 5, 5);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(12);
+  pdf.text(title, margin + 7, y + 10);
+
+  pdf.setTextColor(70, 70, 70);
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(10);
+
+  cleanLines.forEach((line, index) => {
+    pdf.text(String(line), margin + 7, y + 20 + index * lineHeight);
+  });
+}
+
+function loadImageAsDataUrl(src) {
+  return fetch(src)
+    .then((response) => response.blob())
+    .then((blob) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    });
+}
+
+function sanitizeFileName(value) {
+  return String(value || "cliente")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9-_]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase();
 }
 
 function normalizeWhatsappNumber(value) {
